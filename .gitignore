@@ -1,0 +1,107 @@
+# ============================================================
+# React / Node.js
+# ============================================================
+node_modules/
+dist/
+build/
+.next/
+.nuxt/
+.cache/
+.parcel-cache/
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.local
+.env
+.env.*
+!.env.example
+
+# ============================================================
+# .NET / C#
+# ============================================================
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+.vs/
+_ReSharperCache/
+*.ReSharper
+*.DotSettings.user
+TestResults/
+[Pp]ublish/
+[Pp]ackages/
+*.nupkg
+*.snupkg
+*.azurePubxml
+*.pubxml
+*.publishproj
+project.lock.json
+project.fragment.lock.json
+artifacts/
+**/Properties/launchSettings.json
+
+# ============================================================
+# Spring Boot / Java / Maven / Gradle
+# ============================================================
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+*.zip
+*.tar.gz
+*.rar
+hs_err_pid*
+replay_pid*
+.gradle/
+build/
+gradle-app.setting
+!gradle-wrapper.jar
+.gradletasknamecache
+MANIFEST.MF
+*.log
+
+# ============================================================
+# VS Code
+# ============================================================
+.vscode/
+!.vscode/extensions.json
+*.code-workspace
+
+# ============================================================
+# JetBrains IDEs (IntelliJ, Rider, WebStorm, etc.)
+# ============================================================
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+.idea_modules/
+atlassian-ide-plugin.xml
+com_crashlytics_export_strings.xml
+crashlytics.properties
+crashlytics-build.properties
+fabric.properties
+
+# ============================================================
+# OS
+# ============================================================
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
+
+# ============================================================
+# Misc
+# ============================================================
+*.bak
+*.tmp
+*.swp
+*.orig

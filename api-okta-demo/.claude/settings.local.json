@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\benja\\\\Documents\\\\git\\\\Tutorials\\\\okta-demo\\\\api-okta-demo\\\\src\" -Recurse -Depth 2)",
+      "Bash(Select-Object FullName, PSIsContainer)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\benja\\\\Documents\\\\git\\\\Tutorials\\\\okta-demo\\\\api-okta-demo\\\\src\" -Recurse | ForEach-Object { $_.FullName })",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\benja\\\\Documents\\\\git\\\\Tutorials\\\\okta-demo\\\\api-okta-demo\" -Depth 1 | ForEach-Object { $_.FullName })",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\benja\\\\Documents\\\\git\\\\Tutorials\\\\okta-demo\\\\api-okta-demo\\\\src\" | ForEach-Object { $_.Name })"
+    ]
+  }
+}

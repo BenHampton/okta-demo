@@ -1,0 +1,6 @@
+@api_okta_demo_HostAddress = http://localhost:5167
+
+GET {{api_okta_demo_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
