@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>React + .NET 10 + Okta Authentication Tutorial</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Fraunces:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0e11;
+    --surface: #16161a;
+    --surface2: #1e1e24;
+    --surface3: #26262e;
+    --border: #2e2e38;
+    --border2: #3a3a48;
+    --text: #e8e8f0;
+    --muted: #8888a0;
+    --accent: #7c6af7;
+    --accent2: #a89cf8;
+    --accent-bg: rgba(124, 106, 247, 0.12);
+    --green: #4ade80;
+    --green-bg: rgba(74, 222, 128, 0.1);
+    --amber: #fbbf24;
+    --amber-bg: rgba(251, 191, 36, 0.1);
+    --red: #f87171;
+    --red-bg: rgba(248, 113, 113, 0.1);
+    --blue: #60a5fa;
+    --blue-bg: rgba(96, 165, 250, 0.1);
+    --code-bg: #0a0a0d;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 16px;
+    line-height: 1.7;
+  }
+
+  /* Layout */
+  .layout { display: flex; min-height: 100vh; }
+
+  /* Sidebar */
+  .sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    overflow-y: auto;
+    padding: 0 0 2rem;
+    z-index: 100;
+  }
+
+  .sidebar-logo {
+    padding: 1.5rem 1.25rem 1rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0.75rem;
+  }
+
+  .sidebar-logo .logo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--accent-bg);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--accent2);
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+  }
+
+  .sidebar-logo h1 {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.3;
+  }
+
+  .nav-section {
+    padding: 0.5rem 1rem 0.25rem;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 0.75rem;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0.45rem 1.25rem;
+    font-size: 13.5px;
+    color: var(--muted);
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+    text-decoration: none;
+  }
+
+  .nav-item:hover { color: var(--text); background: var(--surface2); }
+
+  .nav-item.active {
+    color: var(--accent2);
+    border-left-color: var(--accent);
+    background: var(--accent-bg);
+  }
+
+  .nav-item .step-num {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--surface3);
+    font-size: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--muted);
+  }
+
+  .nav-item.active .step-num,
+  .nav-item.done .step-num {
+    background: var(--accent);
+    color: white;
+  }
+
+  .nav-item.done { color: var(--text); opacity: 0.6; }
+
+  /* Main content */
+  .main {
+    margin-left: 260px;
+    flex: 1;
+    padding: 3rem 4rem 6rem;
+    max-width: 920px;
+  }
+
+  /* Page header */
+  .page-header {
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .page-header .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--accent2);
+    letter-spacing: 0.08em;
+    margin-bottom: 0.75rem;
+  }
+
+  .page-header h1 {
+    font-family: 'Fraunces', serif;
+    font-size: 42px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--text);
+    margin-bottom: 1rem;
+  }
+
+  .page-header p {
+    font-size: 17px;
+    color: var(--muted);
+    max-width: 600px;
+  }
+
+  .tech-stack {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 1.5rem;
+  }
+
+  .tech-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    background: var(--surface2);
+  }
+
+  /* Step sections */
+  .step-section {
+    margin-bottom: 4rem;
+    scroll-margin-top: 2rem;
+  }
+
+  .step-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.75rem;
+  }
+
+  .step-number {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: var(--accent);
+    color: white;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 3px;
+  }
+
+  .step-title-group h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .step-title-group .step-subtitle {
+    font-size: 14px;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .step-body { padding-left: 52px; }
+
+  p { margin-bottom: 1rem; color: var(--muted); }
+  p strong { color: var(--text); font-weight: 500; }
+
+  h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 1.75rem 0 0.75rem;
+  }
+
+  /* Callouts */
+  .callout {
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin: 1.25rem 0;
+    font-size: 14px;
+    border-left: 3px solid;
+  }
+
+  .callout-info { background: var(--blue-bg); border-color: var(--blue); }
+  .callout-info .callout-title { color: var(--blue); }
+
+  .callout-tip { background: var(--green-bg); border-color: var(--green); }
+  .callout-tip .callout-title { color: var(--green); }
+
+  .callout-warning { background: var(--amber-bg); border-color: var(--amber); }
+  .callout-warning .callout-title { color: var(--amber); }
+
+  .callout-error { background: var(--red-bg); border-color: var(--red); }
+  .callout-error .callout-title { color: var(--red); }
+
+  .callout-title {
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: 'IBM Plex Mono', monospace;
+    margin-bottom: 4px;
+  }
+
+  .callout p { margin: 0; color: var(--text); opacity: 0.85; }
+
+  /* Code blocks */
+  .code-block {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin: 1.25rem 0;
+    overflow: hidden;
+  }
+
+  .code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 1rem;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .code-lang {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  .code-filename {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--accent2);
+  }
+
+  .copy-btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    background: none;
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    padding: 3px 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .copy-btn:hover { color: var(--text); border-color: var(--accent); }
+  .copy-btn.copied { color: var(--green); border-color: var(--green); }
+
+  pre {
+    padding: 1.25rem 1.25rem;
+    overflow-x: auto;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    line-height: 1.65;
+  }
+
+  code { font-family: 'IBM Plex Mono', monospace; font-size: 13px; }
+
+  .inline-code {
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 13px;
+    color: var(--accent2);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* Syntax highlight */
+  .kw { color: #c678dd; }
+  .str { color: #98c379; }
+  .cmt { color: #5c6370; font-style: italic; }
+  .fn { color: #61afef; }
+  .num { color: #d19a66; }
+  .attr { color: #e06c75; }
+  .type { color: #e5c07b; }
+  .punc { color: #abb2bf; }
+  .tag { color: #e06c75; }
+  .prop { color: #d19a66; }
+
+  /* Steps list */
+  .steps-list {
+    list-style: none;
+    counter-reset: steps;
+    margin: 1.25rem 0;
+  }
+
+  .steps-list li {
+    counter-increment: steps;
+    display: flex;
+    gap: 12px;
+    margin-bottom: 0.75rem;
+    font-size: 14px;
+    color: var(--text);
+    align-items: flex-start;
+  }
+
+  .steps-list li::before {
+    content: counter(steps);
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--surface3);
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  /* Config table */
+  .config-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.25rem 0;
+    font-size: 14px;
+  }
+
+  .config-table th {
+    text-align: left;
+    padding: 0.6rem 1rem;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .config-table td {
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: top;
+  }
+
+  .config-table td:first-child {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--accent2);
+    white-space: nowrap;
+    width: 200px;
+  }
+
+  .config-table td .hint {
+    display: block;
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  /* Section divider */
+  .section-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 3.5rem 0;
+  }
+
+  /* Progress tracker */
+  .progress-bar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--border);
+    z-index: 200;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    width: 0%;
+    transition: width 0.2s;
+  }
+
+  /* Architecture diagram */
+  .arch-diagram {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    text-align: center;
+  }
+
+  .arch-diagram svg {
+    max-width: 100%;
+  }
+
+  /* Checklist */
+  .checklist { list-style: none; margin: 1rem 0; }
+  .checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 0.5rem 0;
+    font-size: 14px;
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+  }
+  .checklist li:last-child { border: none; }
+  .checklist li .check {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    border: 1px solid var(--border2);
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+  .checklist li .check:hover { border-color: var(--accent); }
+  .checklist li.checked .check {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .checklist li.checked span { opacity: 0.5; text-decoration: line-through; }
+
+  /* File tree */
+  .file-tree {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    line-height: 2;
+    margin: 1.25rem 0;
+  }
+
+  .file-tree .dir { color: var(--blue); }
+  .file-tree .file { color: var(--muted); }
+  .file-tree .highlight-file { color: var(--accent2); }
+  .file-tree .new-file { color: var(--green); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  @media (max-width: 900px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 2rem 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-badge">Full-Stack Auth</div>
+      <h1>React + .NET 10<br>with Okta</h1>
+    </div>
+
+    <div class="nav-section">Setup</div>
+    <a class="nav-item active" href="#prerequisites">
+      <span class="step-num">✓</span> Prerequisites
+    </a>
+    <a class="nav-item" href="#okta-setup">
+      <span class="step-num">1</span> Okta account setup
+    </a>
+    <a class="nav-item" href="#okta-apps">
+      <span class="step-num">2</span> Register applications
+    </a>
+
+    <div class="nav-section">Backend</div>
+    <a class="nav-item" href="#dotnet-setup">
+      <span class="step-num">3</span> Create .NET 10 API
+    </a>
+    <a class="nav-item" href="#dotnet-okta">
+      <span class="step-num">4</span> Add JWT auth
+    </a>
+    <a class="nav-item" href="#dotnet-endpoints">
+      <span class="step-num">5</span> Protect endpoints
+    </a>
+
+    <div class="nav-section">Frontend</div>
+    <a class="nav-item" href="#react-setup">
+      <span class="step-num">6</span> Create React app
+    </a>
+    <a class="nav-item" href="#react-okta">
+      <span class="step-num">7</span> Add Okta SDK
+    </a>
+    <a class="nav-item" href="#react-routes">
+      <span class="step-num">8</span> Auth routes & login
+    </a>
+    <a class="nav-item" href="#react-api">
+      <span class="step-num">9</span> Call protected API
+    </a>
+
+    <div class="nav-section">Finish</div>
+    <a class="nav-item" href="#testing">
+      <span class="step-num">10</span> Test the flow
+    </a>
+    <a class="nav-item" href="#troubleshooting">
+      <span class="step-num">?</span> Troubleshooting
+    </a>
+  </nav>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Header -->
+    <div class="page-header">
+      <div class="eyebrow">Step-by-step tutorial · Junior developer friendly</div>
+      <h1>React + .NET 10<br>Okta Authentication</h1>
+      <p>From a fresh Okta account to a fully authenticated full-stack application. No prior auth experience needed.</p>
+      <div class="tech-stack">
+        <span class="tech-badge">React 18</span>
+        <span class="tech-badge">.NET 10</span>
+        <span class="tech-badge">Okta</span>
+        <span class="tech-badge">JWT Bearer</span>
+        <span class="tech-badge">OIDC / OAuth 2.0</span>
+        <span class="tech-badge">@okta/okta-react</span>
+      </div>
+    </div>
+
+    <!-- Architecture overview -->
+    <div class="arch-diagram">
+      <svg viewBox="0 0 700 160" xmlns="http://www.w3.org/2000/svg" font-family="'IBM Plex Mono', monospace" font-size="11">
+        <!-- Browser -->
+        <rect x="20" y="50" width="130" height="60" rx="6" fill="#1e1e24" stroke="#7c6af7" stroke-width="1.5"/>
+        <text x="85" y="77" text-anchor="middle" fill="#a89cf8" font-size="12" font-weight="500">React App</text>
+        <text x="85" y="94" text-anchor="middle" fill="#8888a0">Browser / SPA</text>
+
+        <!-- Okta -->
+        <rect x="285" y="20" width="130" height="60" rx="6" fill="#1e1e24" stroke="#60a5fa" stroke-width="1.5"/>
+        <text x="350" y="47" text-anchor="middle" fill="#60a5fa" font-size="12" font-weight="500">Okta</text>
+        <text x="350" y="64" text-anchor="middle" fill="#8888a0">Identity Provider</text>
+
+        <!-- .NET API -->
+        <rect x="550" y="50" width="130" height="60" rx="6" fill="#1e1e24" stroke="#4ade80" stroke-width="1.5"/>
+        <text x="615" y="77" text-anchor="middle" fill="#4ade80" font-size="12" font-weight="500">.NET 10 API</text>
+        <text x="615" y="94" text-anchor="middle" fill="#8888a0">Protected endpoints</text>
+
+        <!-- Arrow: React → Okta login -->
+        <line x1="150" y1="65" x2="280" y2="50" stroke="#7c6af7" stroke-width="1" stroke-dasharray="4,3"/>
+        <polygon points="280,50 268,45 270,55" fill="#7c6af7"/>
+        <text x="210" y="45" text-anchor="middle" fill="#7c6af7" font-size="10">1. login redirect</text>
+
+        <!-- Arrow: Okta → React token -->
+        <line x1="280" y1="70" x2="150" y2="80" stroke="#60a5fa" stroke-width="1" stroke-dasharray="4,3"/>
+        <polygon points="150,80 163,74 162,84" fill="#60a5fa"/>
+        <text x="215" y="90" text-anchor="middle" fill="#60a5fa" font-size="10">2. JWT token</text>
+
+        <!-- Arrow: React → API -->
+        <line x1="150" y1="90" x2="545" y2="90" stroke="#4ade80" stroke-width="1" stroke-dasharray="4,3"/>
+        <polygon points="545,90 533,85 533,95" fill="#4ade80"/>
+        <text x="348" y="108" text-anchor="middle" fill="#4ade80" font-size="10">3. API call + Bearer token</text>
+
+        <!-- Arrow: API validate -->
+        <line x1="615" y1="50" x2="415" y2="35" stroke="#fbbf24" stroke-width="1" stroke-dasharray="4,3"/>
+        <polygon points="415,35 428,29 427,39" fill="#fbbf24"/>
+        <text x="520" y="28" text-anchor="middle" fill="#fbbf24" font-size="10">4. validate token</text>
+      </svg>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- STEP 0: Prerequisites -->
+    <section class="step-section" id="prerequisites">
+      <div class="step-header">
+        <div class="step-number" style="background: var(--surface3); border: 1px solid var(--border2); color: var(--muted); font-size: 16px;">✓</div>
+        <div class="step-title-group">
+          <h2>Prerequisites</h2>
+          <span class="step-subtitle">what you need before starting</span>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Make sure you have the following installed and ready. Don't skip this — missing tools cause confusing errors later.</p>
+
+        <ul class="checklist" id="prereq-list">
+          <li onclick="toggleCheck(this)"><div class="check"></div><span><strong>Node.js 20+</strong> — run <span class="inline-code">node --version</span> to verify</span></li>
+          <li onclick="toggleCheck(this)"><div class="check"></div><span><strong>.NET 10 SDK</strong> — run <span class="inline-code">dotnet --version</span> to verify (needs 10.x)</span></li>
+          <li onclick="toggleCheck(this)"><div class="check"></div><span><strong>A code editor</strong> — VS Code is recommended for both projects</span></li>
+          <li onclick="toggleCheck(this)"><div class="check"></div><span><strong>A free Okta Developer account</strong> — we'll create this in Step 1</span></li>
+          <li onclick="toggleCheck(this)"><div class="check"></div><span><strong>A terminal / command prompt</strong> — PowerShell, bash, or zsh all work</span></li>
+        </ul>
+
+        <div class="callout callout-info">
+          <div class="callout-title">What is Okta?</div>
+          <p>Okta is an Identity Provider (IdP). Instead of building your own login system with passwords and user databases, you outsource that complexity to Okta. Your app redirects users to Okta to log in, Okta gives back a secure token (JWT), and your app trusts that token to identify the user.</p>
+        </div>
+      </div>
+    </section>
+
+    <hr class="section-divider">
+
+    <!-- STEP 1: Okta Account Setup -->
+    <section class="step-section" id="okta-setup">
+      <div class="step-header">
+        <div class="step-number">1</div>
+        <div class="step-title-group">
+          <h2>Create your Okta account</h2>
+          <span class="step-subtitle">developer.okta.com · free forever</span>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Go to <strong>developer.okta.com</strong> and sign up. When prompted to choose a plan, select <strong>Okta Platform Free</strong> — the option labelled <em>"Build, test, and manage integrations"</em>. Do <strong>not</strong> choose Auth0 Platform Free (that's a different product with different SDKs). After verifying your email, you'll land in the Okta Admin Console.</p>
+
+        <div class="callout callout-tip">
+          <div class="callout-title">Your Okta Domain</div>
+          <p>After signup, note your <strong>Okta domain</strong> — it looks like <span class="inline-code">https://trial-1234567.okta.com</span> or <span class="inline-code">https://yourname-integrator-1234567.okta.com</span> (the older <span class="inline-code">dev-xxxxxxx</span> format is no longer used for new accounts). You'll use this in every config file. Find it in the top-right corner of the Admin Console.</p>
+        </div>
+
+        <h3>Create a test user</h3>
+        <p>You'll need a real user to log in with during testing.</p>
+
+        <ol class="steps-list">
+          <li>In the Admin Console, go to <strong>Directory → People</strong></li>
+          <li>Click <strong>Add Person</strong></li>
+          <li>Fill in a first name, last name, and email address</li>
+          <li>For Password, check <strong>"I will set password"</strong> and enter a test password</li>
+          <li>Uncheck <strong>"User must change password on first login"</strong> for easier testing</li>
+          <li>Click <strong>Save</strong></li>
+        </ol>
+      </div>
+    </section>
+
+    <hr class="section-divider">
+
+    <!-- STEP 2: Register Applications -->
+    <section class="step-section" id="okta-apps">
+      <div class="step-header">
+        <div class="step-number">2</div>
+        <div class="step-title-group">
+          <h2>Register your applications in Okta</h2>
+          <span class="step-subtitle">SPA app + API authorization server</span>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>You need to register two things in Okta: your <strong>React SPA</strong> (so Okta knows where to redirect after login) and an <strong>Authorization Server</strong> (so your .NET API can validate tokens).</p>
+
+        <h3>Register the React SPA</h3>
+        <ol class="steps-list">
+          <li>Go to <strong>Applications → Applications</strong></li>
+          <li>Click <strong>Create App Integration</strong></li>
+          <li>Select <strong>OIDC - OpenID Connect</strong> → <strong>Single-Page Application</strong> → Next</li>
+          <li>Fill in the settings below, then click <strong>Save</strong></li>
+        </ol>
+
+        <table class="config-table">
+          <thead><tr><th>Field</th><th>Value</th></tr></thead>
+          <tbody>
+            <tr><td>App integration name</td><td>My React App<span class="hint">Can be anything descriptive</span></td></tr>
+            <tr><td>Grant type</td><td>Authorization Code (checked by default)<span class="hint">PKCE is automatically enabled for SPAs</span></td></tr>
+            <tr><td>Sign-in redirect URIs</td><td><span class="inline-code">http://localhost:3000/login/callback</span></td></tr>
+            <tr><td>Sign-out redirect URIs</td><td><span class="inline-code">http://localhost:3000</span></td></tr>
+            <tr><td>Controlled access</td><td>Allow everyone in your organization<span class="hint">Easiest for dev; tighten in production</span></td></tr>
+          </tbody>
+        </table>
+
+        <div class="callout callout-warning">
+          <div class="callout-title">Save your Client ID</div>
+          <p>After saving, Okta shows you a <strong>Client ID</strong> (looks like <span class="inline-code">0oa1abc...xyz</span>). Copy it — you'll need it in your React config. There is no client secret for SPAs (that's intentional — it's a browser app).</p>
+        </div>
+
+        <h3>Note the Authorization Server details</h3>
+        <p>Okta comes with a default Authorization Server. In the Admin Console, go to <strong>Security → API</strong>. You'll see <strong>"default"</strong> listed. Click on it and note:</p>
+
+        <ul class="checklist" id="authserver-list">
+          <li onclick="toggleCheck(this)"><div class="check"></div><span><strong>Issuer URI</strong> — looks like <span class="inline-code">https://yourname-integrator-1234567.okta.com/oauth2/default</span></span></li>
+          <li onclick="toggleCheck(this)"><div class="check"></div><span><strong>Audience</strong> — default is <span class="inline-code">api://default</span> (this goes in your .NET config)</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <hr class="section-divider">
+
+    <!-- STEP 3: Create .NET API -->
+    <section class="step-section" id="dotnet-setup">
+      <div class="step-header">
+        <div class="step-number">3</div>
+        <div class="step-title-group">
+          <h2>Create the .NET 10 Web API</h2>
+          <span class="step-subtitle">dotnet new webapi</span>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Open a terminal and run these commands to scaffold your API project with a solution file.</p>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">bash</span>
+            <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          </div>
+          <pre><code><span class="cmt"># Create the Web API project targeting .NET 10</span>
+dotnet new webapi -n <span class="str">api-okta-demo</span> -f net10.0 -o <span class="str">api-okta-demo\src\api-okta-demo</span>
+
+<span class="cmt"># Create the solution file</span>
+dotnet new sln -n <span class="str">api-okta-demo</span> -o <span class="str">api-okta-demo</span> --format sln
+
+<span class="cmt"># Add the project to the solution</span>
+dotnet sln <span class="str">api-okta-demo\api-okta-demo.sln</span> add <span class="str">api-okta-demo\src\api-okta-demo\api-okta-demo.csproj</span>
+
+<span class="cmt"># Navigate into the project folder</span>
+<span class="fn">cd</span> api-okta-demo\src\api-okta-demo
+
+<span class="cmt"># Install the JWT Bearer auth NuGet package</span>
+dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer</code></pre>
+        </div>
+
+        <div class="callout callout-info">
+          <div class="callout-title">Why this structure?</div>
+          <p>The solution (<span class="inline-code">.sln</span>) lives at the root of <span class="inline-code">api-okta-demo\</span> and the actual project sits inside <span class="inline-code">src\api-okta-demo\</span>. This is a standard layout that makes it easy to add more projects (e.g. tests) to the same solution later.</p>
+        </div>
+
+        <div class="callout callout-info">
+          <div class="callout-title">What --use-controllers does (and why it's not needed here)</div>
+          <p>.NET 8+ defaults to Minimal APIs — a lightweight style where routes are defined inline in <span class="inline-code">Program.cs</span>. Adding <span class="inline-code">--use-controllers</span> switches to the classic MVC controller style. The <span class="inline-code">-f net10.0</span> flag targets .NET 10 explicitly, and the generated template already includes controller support by default in .NET 10.</p>
+        </div>
+
+        <h3>Your project structure</h3>
+        <div class="file-tree">
+          <span class="dir">api-okta-demo/</span><br>
+          &nbsp;&nbsp;<span class="file">api-okta-demo.sln</span><br>
+          &nbsp;&nbsp;<span class="dir">src/</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">api-okta-demo/</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">Controllers/</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="file">WeatherForecastController.cs</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">Properties/</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="file">launchSettings.json</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="highlight-file">Program.cs</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color: var(--muted)">← we'll edit this</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="highlight-file">appsettings.json</span> &nbsp;&nbsp;<span style="color: var(--muted)">← we'll edit this</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="file">api-okta-demo.csproj</span>
+        </div>
+      </div>
+    </section>
+
+    <hr class="section-divider">
+
+    <!-- STEP 4: Add JWT Auth to .NET -->
+    <section class="step-section" id="dotnet-okta">
+      <div class="step-header">
+        <div class="step-number">4</div>
+        <div class="step-title-group">
+          <h2>Configure JWT authentication</h2>
+          <span class="step-subtitle">appsettings.json + Program.cs</span>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Now we tell .NET how to validate tokens issued by Okta. This involves two files.</p>
+
+        <div class="callout callout-warning">
+          <div class="callout-title">Replace the default Program.cs entirely</div>
+          <p>The <span class="inline-code">dotnet new webapi</span> template generates a <span class="inline-code">Program.cs</span> using Minimal APIs with a <span class="inline-code">/weatherforecast</span> example route. This does <strong>not</strong> support controllers. Replace the entire file with the code below — do not try to merge them.</p>
+        </div>
+
+        <h3>1. Update appsettings.json</h3>
+        <p>Add your Okta details. Replace the placeholder values with your actual Okta domain and audience.</p>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-filename">src/api-okta-demo/appsettings.json</span>
+            <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          </div>
+          <pre><code><span class="punc">{</span>
+  <span class="attr">"Logging"</span><span class="punc">:</span> <span class="punc">{</span>
+    <span class="attr">"LogLevel"</span><span class="punc">:</span> <span class="punc">{</span>
+      <span class="attr">"Default"</span><span class="punc">:</span> <span class="str">"Information"</span>
+    <span class="punc">}</span>
+  <span class="punc">}</span><span class="punc">,</span>
+  <span class="attr">"Okta"</span><span class="punc">:</span> <span class="punc">{</span>
+    <span class="attr">"Issuer"</span><span class="punc">:</span>   <span class="str">"https://yourname-integrator-1234567.okta.com/oauth2/default"</span><span class="punc">,</span>
+    <span class="attr">"Audience"</span><span class="punc">:</span> <span class="str">"api://default"</span>
+  <span class="punc">}</span>
+<span class="punc">}</span></code></pre>
+        </div>
+
+        <div class="callout callout-warning">
+          <div class="callout-title">Replace with your actual values</div>
+          <p>Replace <span class="inline-code">yourname-integrator-1234567</span> with your real Okta subdomain from Step 1. The Audience must exactly match what's configured in your Okta Authorization Server.</p>
+        </div>
+
+        <h3>2. Update Program.cs</h3>
+        <p>Wire up JWT Bearer authentication and CORS (so your React app on port 3000 can call the API).</p>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-filename">src/api-okta-demo/Program.cs</span>
+            <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          </div>
+          <pre><code><span class="kw">using</span> Microsoft<span class="punc">.</span>AspNetCore<span class="punc">.</span>Authentication<span class="punc">.</span>JwtBearer<span class="punc">;</span>
+
+<span class="kw">var</span> builder <span class="punc">=</span> WebApplication<span class="punc">.</span><span class="fn">CreateBuilder</span><span class="punc">(</span>args<span class="punc">);</span>
+
+<span class="cmt">// Read Okta config from appsettings.json</span>
+<span class="kw">var</span> oktaIssuer   <span class="punc">=</span> builder<span class="punc">.</span>Configuration<span class="punc">[</span><span class="str">"Okta:Issuer"</span><span class="punc">]!</span><span class="punc">;</span>
+<span class="kw">var</span> oktaAudience <span class="punc">=</span> builder<span class="punc">.</span>Configuration<span class="punc">[</span><span class="str">"Okta:Audience"</span><span class="punc">]!</span><span class="punc">;</span>
+
+<span class="cmt">// Add JWT Bearer authentication</span>
+builder<span class="punc">.</span>Services
+  <span class="punc">.</span><span class="fn">AddAuthentication</span><span class="punc">(</span>JwtBearerDefaults<span class="punc">.</span>AuthenticationScheme<span class="punc">)</span>
+  <span class="punc">.</span><span class="fn">AddJwtBearer</span><span class="punc">(</span>options <span class="punc">=></span>
+  <span class="punc">{</span>
+    options<span class="punc">.</span>Authority <span class="punc">=</span> oktaIssuer<span class="punc">;</span>
+    options<span class="punc">.</span>Audience  <span class="punc">=</span> oktaAudience<span class="punc">;</span>
+    options<span class="punc">.</span>RequireHttpsMetadata <span class="punc">=</span> <span class="kw">false</span><span class="punc">;</span> <span class="cmt">// dev only</span>
+  <span class="punc">});</span>
+
+builder<span class="punc">.</span>Services<span class="punc">.</span><span class="fn">AddAuthorization</span><span class="punc">();</span>
+
+<span class="cmt">// Allow React dev server to call the API</span>
+builder<span class="punc">.</span>Services<span class="punc">.</span><span class="fn">AddCors</span><span class="punc">(</span>options <span class="punc">=></span>
+  options<span class="punc">.</span><span class="fn">AddPolicy</span><span class="punc">(</span><span class="str">"ReactApp"</span><span class="punc">,</span> policy <span class="punc">=></span>
+    policy<span class="punc">.</span><span class="fn">WithOrigins</span><span class="punc">(</span><span class="str">"http://localhost:3000"</span><span class="punc">)</span>
+          <span class="punc">.</span><span class="fn">AllowAnyHeader</span><span class="punc">()</span>
+          <span class="punc">.</span><span class="fn">AllowAnyMethod</span><span class="punc">()</span>
+  <span class="punc">)</span>
+<span class="punc">);</span>
+
+<span class="cmt">// Required to use controller classes</span>
+builder<span class="punc">.</span>Services<span class="punc">.</span><span class="fn">AddControllers</span><span class="punc">();</span>
+
+<span class="kw">var</span> app <span class="punc">=</span> builder<span class="punc">.</span><span class="fn">Build</span><span class="punc">();</span>
+
+app<span class="punc">.</span><span class="fn">UseCors</span><span class="punc">(</span><span class="str">"ReactApp"</span><span class="punc">);</span>        <span class="cmt">// Must come before auth</span>
+app<span class="punc">.</span><span class="fn">UseAuthentication</span><span class="punc">();</span>
+app<span class="punc">.</span><span class="fn">UseAuthorization</span><span class="punc">();</span>
+
+<span class="cmt">// Maps all controller classes and their routes</span>
+app<span class="punc">.</span><span class="fn">MapControllers</span><span class="punc">();</span>
+
+app<span class="punc">.</span><span class="fn">Run</span><span class="punc">();</span></code></pre>
+        </div>
+
+        <div class="callout callout-tip">
+          <div class="callout-title">HTTPS redirect warning</div>
+          <p>If you see <span class="inline-code">Failed to determine the https port for redirect</span> in your terminal, it means <span class="inline-code">app.UseHttpsRedirection()</span> is still in your file from the default template. Remove that line — it's not needed for local development and will cause confusing redirect issues when calling the API from React or Postman over HTTP.</p>
+        </div>
+
+        <div class="callout callout-info">
+          <div class="callout-title">How JWT validation works</div>
+          <p>When a request arrives with a Bearer token, .NET calls Okta's <strong>JWKS endpoint</strong> (auto-discovered from the Issuer URL) to get Okta's public keys. It uses those to verify the token's signature — no database call needed. This is the beauty of JWTs.</p>
+        </div>
+      </div>
+    </section>
+
+    <hr class="section-divider">
+
+    <!-- STEP 5: Protect Endpoints -->
+    <section class="step-section" id="dotnet-endpoints">
+      <div class="step-header">
+        <div class="step-number">5</div>
+        <div class="step-title-group">
+          <h2>Protect API endpoints</h2>
+          <span class="step-subtitle">[Authorize] attribute</span>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Add a controller that demonstrates both a public and a protected endpoint. Replace the existing <span class="inline-code">WeatherForecastController.cs</span> or create a new file.</p>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-filename">src/api-okta-demo/Controllers/ProfileController.cs</span>
+            <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          </div>
+          <pre><code><span class="kw">using</span> Microsoft<span class="punc">.</span>AspNetCore<span class="punc">.</span>Authorization<span class="punc">;</span>
+<span class="kw">using</span> Microsoft<span class="punc">.</span>AspNetCore<span class="punc">.</span>Mvc<span class="punc">;</span>
+
+<span class="punc">[</span><span class="type">ApiController</span><span class="punc">]</span>
+<span class="punc">[</span><span class="type">Route</span><span class="punc">(</span><span class="str">"/api/profile"</span><span class="punc">)</span><span class="punc">]</span>
+<span class="kw">public class</span> <span class="type">ProfileController</span> <span class="punc">:</span> <span class="type">ControllerBase</span>
+<span class="punc">{</span>
+    <span class="cmt">// Public — anyone can call this</span>
+    <span class="punc">[</span><span class="type">HttpGet</span><span class="punc">(</span><span class="str">"public"</span><span class="punc">)</span><span class="punc">]</span>
+    <span class="kw">public</span> <span class="type">IActionResult</span> <span class="fn">Public</span><span class="punc">()</span>
+        <span class="punc">=></span> <span class="fn">Ok</span><span class="punc">(</span><span class="kw">new</span> <span class="punc">{</span> message <span class="punc">=</span> <span class="str">"This is public!"</span> <span class="punc">});</span>
+
+    <span class="cmt">// Protected — requires a valid Okta JWT</span>
+    <span class="punc">[</span><span class="type">HttpGet</span><span class="punc">(</span><span class="str">"me"</span><span class="punc">)</span><span class="punc">]</span>
+    <span class="punc">[</span><span class="type">Authorize</span><span class="punc">]</span>
+    <span class="kw">public</span> <span class="type">IActionResult</span> <span class="fn">GetMe</span><span class="punc">()</span>
+    <span class="punc">{</span>
+        <span class="cmt">// User.Identity is populated from the JWT claims</span>
+        <span class="kw">var</span> name  <span class="punc">=</span> User<span class="punc">.</span>Identity<span class="punc">?.</span>Name<span class="punc">;</span>
+        <span class="kw">var</span> email <span class="punc">=</span> User<span class="punc">.</span><span class="fn">FindFirst</span><span class="punc">(</span><span class="str">"sub"</span><span class="punc">)?.</span>Value<span class="punc">;</span>
+
+        <span class="kw">return</span> <span class="fn">Ok</span><span class="punc">(</span><span class="kw">new</span> <span class="punc">{</span>
+            message <span class="punc">=</span> <span class="str">"You are authenticated!"</span><span class="punc">,</span>
+            name<span class="punc">,</span>
+            email
+        <span class="punc">});</span>
+    <span class="punc">}</span>
+<span class="punc">}</span></code></pre>
+        </div>
+
+        <h3>Start the API</h3>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">bash</span>
+            <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          </div>
+          <pre><code><span class="cmt"># Run from the project folder (not the solution root)</span>
+<span class="fn">cd</span> api-okta-demo\src\api-okta-demo
+dotnet run</code></pre>
+        </div>
+        <p>The API starts on <span class="inline-code">https://localhost:5167</span> (or check your terminal output). Test the public endpoint: <span class="inline-code">GET http://localhost:5167/api/profile/public</span> should return a 200. The <span class="inline-code">/me</span> endpoint will return 401 until we send a token.</p>
+      </div>
+    </section>
+
+    <hr class="section-divider">
+
+    <!-- STEP 6: Create React App -->
+    <section class="step-section" id="react-setup">
+      <div class="step-header">
+        <div class="step-number">6</div>
+        <div class="step-title-group">
+          <h2>Create the React application</h2>
+          <span class="step-subtitle">Vite + React</span>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Open a <strong>new terminal</strong> (keep the API running) and scaffold the React app using Vite.</p>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">bash</span>
+            <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          </div>
+          <pre><code><span class="cmt"># Create the app (in a separate folder from MyApi)</span>
+npm create vite@latest my-react-app -- --template react
+<span class="fn">cd</span> my-react-app
+npm install</code></pre>
+        </div>
+
+        <div class="callout callout-tip">
+          <div class="callout-title">Folder structure tip</div>
+          <p>Keep the React app and .NET API as <strong>sibling folders</strong>, not nested. e.g. <span class="inline-code">projects/MyApi/</span> and <span class="inline-code">projects/my-react-app/</span>. This makes managing them easier.</p>
+        </div>
+      </div>
+    </section>
+
+    <hr class="section-divider">
+
+    <!-- STEP 7: Add Okta SDK to React -->
+    <section class="step-section" id="react-okta">
+      <div class="step-header">
+        <div class="step-number">7</div>
+        <div class="step-title-group">
+          <h2>Add the Okta React SDK</h2>
+          <span class="step-subtitle">@okta/okta-react + @okta/okta-auth-js</span>
+        </div>
+      </div>
+      <div class="step-body">
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">bash</span>
+            <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          </div>
+          <pre><code>npm install @okta/okta-react @okta/okta-auth-js react-router-dom</code></pre>
+        </div>
+
+        <h3>Create the Okta config file</h3>
+        <p>Create a new file <span class="inline-code">src/oktaConfig.js</span> with your app's settings from Step 2.</p>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-filename">src/oktaConfig.js</span>
+            <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          </div>
+          <pre><code><span class="kw">const</span> oktaConfig <span class="punc">=</span> <span class="punc">{</span>
+  clientId<span class="punc">:</span>    <span class="str">'0oa1abc...xyz'</span><span class="punc">,</span>      <span class="cmt">// From Step 2 — your SPA Client ID</span>
+  issuer<span class="punc">:</span>     <span class="str">'https://yourname-integrator-1234567.okta.com/oauth2/default'</span><span class="punc">,</span>
+  redirectUri<span class="punc">:</span> <span class="str">`${window.location.origin}/login/callback`</span><span class="punc">,</span>
+  scopes<span class="punc">:</span>     <span class="punc">[</span><span class="str">'openid'</span><span class="punc">,</span> <span class="str">'profile'</span><span class="punc">,</span> <span class="str">'email'</span><span class="punc">]</span><span class="punc">,</span>
+  pkce<span class="punc">:</span>       <span class="kw">true</span><span class="punc">,</span>
+<span class="punc">};</span>
+
+<span class="kw">export default</span> oktaConfig<span class="punc">;</span></code></pre>
+        </div>
+
+        <div class="callout callout-warning">
+          <div class="callout-title">Replace with your actual values</div>
+          <p>Replace <span class="inline-code">0oa1abc...xyz</span> with your actual Client ID and <span class="inline-code">yourname-integrator-1234567</span> with your Okta domain from Steps 1 and 2.</p>
+        </div>
+      </div>
+    </section>
+
+    <hr class="section-divider">
+
+    <!-- STEP 8: Auth Routes -->
+    <section class="step-section" id="react-routes">
+      <div class="step-header">
+        <div class="step-number">8</div>
+        <div class="step-title-group">
+          <h2>Set up routing and login UI</h2>
+          <span class="step-subtitle">OktaAuth provider + SecureRoute</span>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Now wire everything together. We'll update <span class="inline-code">main.jsx</span>, create a <span class="inline-code">Home</span> page, and a protected <span class="inline-code">Dashboard</span> page.</p>
+
+        <h3>Update main.jsx</h3>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-filename">src/main.jsx</span>
+            <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          </div>
+          <pre><code><span class="kw">import</span> React <span class="kw">from</span> <span class="str">'react'</span>
+<span class="kw">import</span> ReactDOM <span class="kw">from</span> <span class="str">'react-dom/client'</span>
+<span class="kw">import</span> <span class="punc">{</span> BrowserRouter <span class="punc">}</span> <span class="kw">from</span> <span class="str">'react-router-dom'</span>
+<span class="kw">import</span> <span class="punc">{</span> OktaAuth <span class="punc">}</span> <span class="kw">from</span> <span class="str">'@okta/okta-auth-js'</span>
+<span class="kw">import</span> <span class="punc">{</span> Security <span class="punc">}</span> <span class="kw">from</span> <span class="str">'@okta/okta-react'</span>
+<span class="kw">import</span> oktaConfig <span class="kw">from</span> <span class="str">'./oktaConfig'</span>
+<span class="kw">import</span> App <span class="kw">from</span> <span class="str">'./App'</span>
+<span class="kw">import</span> <span class="str">'./index.css'</span>
+
+<span class="kw">const</span> oktaAuth <span class="punc">=</span> <span class="kw">new</span> <span class="fn">OktaAuth</span><span class="punc">(</span>oktaConfig<span class="punc">);</span>
+
+<span class="kw">const</span> <span class="fn">restoreOriginalUri</span> <span class="punc">=</span> <span class="kw">async</span> <span class="punc">(</span>_oktaAuth<span class="punc">,</span> originalUri<span class="punc">)</span> <span class="punc">=></span> <span class="punc">{</span>
+  window<span class="punc">.</span>location<span class="punc">.</span>replace<span class="punc">(</span>originalUri <span class="punc">||</span> <span class="str">'/'</span><span class="punc">);</span>
+<span class="punc">};</span>
+
+ReactDOM<span class="punc">.</span><span class="fn">createRoot</span><span class="punc">(</span>document<span class="punc">.</span><span class="fn">getElementById</span><span class="punc">(</span><span class="str">'root'</span><span class="punc">))</span>
+  <span class="punc">.</span><span class="fn">render</span><span class="punc">(</span>
+    <span class="tag">&lt;BrowserRouter&gt;</span>
+      <span class="tag">&lt;Security</span> <span class="prop">oktaAuth</span><span class="punc">={</span>oktaAuth<span class="punc">}</span> <span class="prop">restoreOriginalUri</span><span class="punc">={</span>restoreOriginalUri<span class="punc">}</span><span class="tag">&gt;</span>
+        <span class="tag">&lt;App /&gt;</span>
+      <span class="tag">&lt;/Security&gt;</span>
+    <span class="tag">&lt;/BrowserRouter&gt;</span>
+  <span class="punc">);</span></code></pre>
+        </div>
+
+        <h3>Update App.jsx</h3>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-filename">src/App.jsx</span>
+            <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          </div>
+          <pre><code><span class="kw">import</span> <span class="punc">{</span> Route<span class="punc">,</span> Routes <span class="punc">}</span> <span class="kw">from</span> <span class="str">'react-router-dom'</span>
+<span class="kw">import</span> <span class="punc">{</span> LoginCallback<span class="punc">,</span> RequiredAuth <span class="punc">}</span> <span class="kw">from</span> <span class="str">'@okta/okta-react'</span>
+<span class="kw">import</span> Home <span class="kw">from</span> <span class="str">'./pages/Home'</span>
+<span class="kw">import</span> Dashboard <span class="kw">from</span> <span class="str">'./pages/Dashboard'</span>
+
+<span class="kw">export default function</span> <span class="fn">App</span><span class="punc">()</span> <span class="punc">{</span>
+  <span class="kw">return</span> <span class="punc">(</span>
+    <span class="tag">&lt;Routes&gt;</span>
+      <span class="tag">&lt;Route</span> <span class="prop">path</span><span class="punc">=</span><span class="str">"/"</span>        <span class="prop">element</span><span class="punc">={</span><span class="tag">&lt;Home /&gt;</span><span class="punc">}</span> <span class="tag">/&gt;</span>
+      <span class="tag">&lt;Route</span> <span class="prop">path</span><span class="punc">=</span><span class="str">"/login/callback"</span> <span class="prop">element</span><span class="punc">={</span><span class="tag">&lt;LoginCallback /&gt;</span><span class="punc">}</span> <span class="tag">/&gt;</span>
+      <span class="tag">&lt;Route</span> <span class="prop">element</span><span class="punc">={</span><span class="tag">&lt;RequiredAuth /&gt;</span><span class="punc">}</span><span class="tag">&gt;</span>
+        <span class="tag">&lt;Route</span> <span class="prop">path</span><span class="punc">=</span><span class="str">"/dashboard"</span> <span class="prop">element</span><span class="punc">={</span><span class="tag">&lt;Dashboard /&gt;</span><span class="punc">}</span> <span class="tag">/&gt;</span>
+      <span class="tag">&lt;/Route&gt;</span>
+    <span class="tag">&lt;/Routes&gt;</span>
+  <span class="punc">)</span>
+<span class="punc">}</span></code></pre>
+        </div>
+
+        <h3>Create the Home page</h3>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-filename">src/pages/Home.jsx</span>
+            <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          </div>
+          <pre><code><span class="kw">import</span> <span class="punc">{</span> useOktaAuth <span class="punc">}</span> <span class="kw">from</span> <span class="str">'@okta/okta-react'</span>
+<span class="kw">import</span> <span class="punc">{</span> useNavigate <span class="punc">}</span> <span class="kw">from</span> <span class="str">'react-router-dom'</span>
+
+<span class="kw">export default function</span> <span class="fn">Home</span><span class="punc">()</span> <span class="punc">{</span>
+  <span class="kw">const</span> <span class="punc">{</span> oktaAuth<span class="punc">,</span> authState <span class="punc">}</span> <span class="punc">=</span> <span class="fn">useOktaAuth</span><span class="punc">();</span>
+  <span class="kw">const</span> navigate <span class="punc">=</span> <span class="fn">useNavigate</span><span class="punc">();</span>
+
+  <span class="kw">if</span> <span class="punc">(!</span>authState<span class="punc">)</span> <span class="kw">return</span> <span class="tag">&lt;p&gt;</span>Loading...<span class="tag">&lt;/p&gt;</span><span class="punc">;</span>
+
+  <span class="kw">const</span> <span class="fn">login</span>  <span class="punc">=</span> <span class="punc">()</span> <span class="punc">=></span> oktaAuth<span class="punc">.</span><span class="fn">signInWithRedirect</span><span class="punc">();</span>
+  <span class="kw">const</span> <span class="fn">logout</span> <span class="punc">=</span> <span class="punc">()</span> <span class="punc">=></span> oktaAuth<span class="punc">.</span><span class="fn">signOut</span><span class="punc">(</span><span class="punc">{</span> postLogoutRedirectUri<span class="punc">:</span> window<span class="punc">.</span>location<span class="punc">.</span>origin <span class="punc">});</span>
+
+  <span class="kw">return</span> <span class="punc">(</span>
+    <span class="tag">&lt;div&gt;</span>
+      <span class="tag">&lt;h1&gt;</span>Welcome<span class="tag">&lt;/h1&gt;</span>
+      <span class="punc">{</span>authState<span class="punc">.</span>isAuthenticated <span class="punc">?</span> <span class="punc">(</span>
+        <span class="tag">&lt;&gt;</span>
+          <span class="tag">&lt;p&gt;</span>You are logged in!<span class="tag">&lt;/p&gt;</span>
+          <span class="tag">&lt;button</span> <span class="prop">onClick</span><span class="punc">={()</span> <span class="punc">=></span> <span class="fn">navigate</span><span class="punc">(</span><span class="str">'/dashboard'</span><span class="punc">)}</span><span class="tag">&gt;</span>Go to Dashboard<span class="tag">&lt;/button&gt;</span>
+          <span class="tag">&lt;button</span> <span class="prop">onClick</span><span class="punc">={</span>logout<span class="punc">}</span><span class="tag">&gt;</span>Logout<span class="tag">&lt;/button&gt;</span>
+        <span class="tag">&lt;/&gt;</span>
+      <span class="punc">)</span> <span class="punc">:</span> <span class="punc">(</span>
+        <span class="tag">&lt;button</span> <span class="prop">onClick</span><span class="punc">={</span>login<span class="punc">}</span><span class="tag">&gt;</span>Login with Okta<span class="tag">&lt;/button&gt;</span>
+      <span class="punc">)}</span>
+    <span class="tag">&lt;/div&gt;</span>
+  <span class="punc">)</span>
+<span class="punc">}</span></code></pre>
+        </div>
+      </div>
+    </section>
+
+    <hr class="section-divider">
+
+    <!-- STEP 9: Call Protected API -->
+    <section class="step-section" id="react-api">
+      <div class="step-header">
+        <div class="step-number">9</div>
+        <div class="step-title-group">
+          <h2>Call the protected .NET API</h2>
+          <span class="step-subtitle">Bearer token in Authorization header</span>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>The Dashboard page gets the access token from Okta and sends it as a Bearer token to the .NET API.</p>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-filename">src/pages/Dashboard.jsx</span>
+            <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          </div>
+          <pre><code><span class="kw">import</span> <span class="punc">{</span> useState<span class="punc">,</span> useEffect <span class="punc">}</span> <span class="kw">from</span> <span class="str">'react'</span>
+<span class="kw">import</span> <span class="punc">{</span> useOktaAuth <span class="punc">}</span> <span class="kw">from</span> <span class="str">'@okta/okta-react'</span>
+
+<span class="kw">export default function</span> <span class="fn">Dashboard</span><span class="punc">()</span> <span class="punc">{</span>
+  <span class="kw">const</span> <span class="punc">{</span> authState <span class="punc">}</span> <span class="punc">=</span> <span class="fn">useOktaAuth</span><span class="punc">();</span>
+  <span class="kw">const</span> <span class="punc">[</span>data<span class="punc">,</span> setData<span class="punc">]</span> <span class="punc">=</span> <span class="fn">useState</span><span class="punc">(</span><span class="kw">null</span><span class="punc">);</span>
+  <span class="kw">const</span> <span class="punc">[</span>error<span class="punc">,</span> setError<span class="punc">]</span> <span class="punc">=</span> <span class="fn">useState</span><span class="punc">(</span><span class="kw">null</span><span class="punc">);</span>
+
+  <span class="fn">useEffect</span><span class="punc">(()</span> <span class="punc">=></span> <span class="punc">{</span>
+    <span class="kw">if</span> <span class="punc">(!</span>authState<span class="punc">?.</span>accessToken<span class="punc">)</span> <span class="kw">return</span><span class="punc">;</span>
+
+    <span class="kw">const</span> token <span class="punc">=</span> authState<span class="punc">.</span>accessToken<span class="punc">.</span>accessToken<span class="punc">;</span>
+
+    <span class="fn">fetch</span><span class="punc">(</span><span class="str">'http://localhost:5167/api/profile/me'</span><span class="punc">,</span> <span class="punc">{</span>
+      headers<span class="punc">:</span> <span class="punc">{</span>
+        Authorization<span class="punc">:</span> <span class="str">`Bearer ${token}`</span>
+      <span class="punc">}</span>
+    <span class="punc">})</span>
+      <span class="punc">.</span><span class="fn">then</span><span class="punc">(</span>res <span class="punc">=></span> res<span class="punc">.</span><span class="fn">json</span><span class="punc">())</span>
+      <span class="punc">.</span><span class="fn">then</span><span class="punc">(</span>setData<span class="punc">)</span>
+      <span class="punc">.</span><span class="fn">catch</span><span class="punc">(</span>err <span class="punc">=></span> <span class="fn">setError</span><span class="punc">(</span>err<span class="punc">.</span>message<span class="punc">));</span>
+  <span class="punc">},</span> <span class="punc">[</span>authState<span class="punc">]);</span>
+
+  <span class="kw">return</span> <span class="punc">(</span>
+    <span class="tag">&lt;div&gt;</span>
+      <span class="tag">&lt;h1&gt;</span>Dashboard<span class="tag">&lt;/h1&gt;</span>
+      <span class="punc">{</span>error <span class="punc">&amp;&amp;</span> <span class="tag">&lt;p</span> <span class="prop">style</span><span class="punc">={{</span>color<span class="punc">:</span><span class="str">'red'</span><span class="punc">}}</span><span class="tag">&gt;</span>Error: <span class="punc">{</span>error<span class="punc">}</span><span class="tag">&lt;/p&gt;</span><span class="punc">}</span>
+      <span class="punc">{</span>data <span class="punc">&amp;&amp;</span> <span class="punc">(</span>
+        <span class="tag">&lt;div&gt;</span>
+          <span class="tag">&lt;p&gt;</span><span class="punc">{</span>data<span class="punc">.</span>message<span class="punc">}</span><span class="tag">&lt;/p&gt;</span>
+          <span class="tag">&lt;p&gt;</span>Name: <span class="punc">{</span>data<span class="punc">.</span>name<span class="punc">}</span><span class="tag">&lt;/p&gt;</span>
+          <span class="tag">&lt;p&gt;</span>Email: <span class="punc">{</span>data<span class="punc">.</span>email<span class="punc">}</span><span class="tag">&lt;/p&gt;</span>
+        <span class="tag">&lt;/div&gt;</span>
+      <span class="punc">)}</span>
+      <span class="punc">{!</span>data <span class="punc">&amp;&amp; !</span>error <span class="punc">&amp;&amp;</span> <span class="tag">&lt;p&gt;</span>Loading profile from API...<span class="tag">&lt;/p&gt;</span><span class="punc">}</span>
+    <span class="tag">&lt;/div&gt;</span>
+  <span class="punc">)</span>
+<span class="punc">}</span></code></pre>
+        </div>
+
+        <h3>Start the React app</h3>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">bash</span>
+            <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          </div>
+          <pre><code>npm run dev</code></pre>
+        </div>
+        <p>Open <span class="inline-code">http://localhost:3000</span> in your browser.</p>
+      </div>
+    </section>
+
+    <hr class="section-divider">
+
+    <!-- STEP 10: Testing -->
+    <section class="step-section" id="testing">
+      <div class="step-header">
+        <div class="step-number">10</div>
+        <div class="step-title-group">
+          <h2>Test the full flow</h2>
+          <span class="step-subtitle">end-to-end authentication</span>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>With both servers running, test the complete authentication flow:</p>
+
+        <ol class="steps-list">
+          <li>Open <span class="inline-code">http://localhost:3000</span> — you should see the Home page with a <strong>Login with Okta</strong> button</li>
+          <li>Click the button — you'll be redirected to your Okta-hosted login page</li>
+          <li>Log in with the test user you created in Step 1</li>
+          <li>Okta redirects back to <span class="inline-code">/login/callback</span>, the SDK processes the tokens</li>
+          <li>You're redirected back to the Home page, now showing <strong>Go to Dashboard</strong></li>
+          <li>Click Dashboard — the React app calls <span class="inline-code">/api/profile/me</span> with your Bearer token</li>
+          <li>The .NET API validates the token and returns your name and email</li>
+          <li>You should see "You are authenticated!" with your user details</li>
+        </ol>
+
+        <div class="callout callout-tip">
+          <div class="callout-title">Inspect the token</div>
+          <p>In your browser's DevTools → Application → Storage, you'll see Okta storing tokens. Copy the access token and paste it into <strong>jwt.io</strong> to see the claims inside it — this is exactly what your .NET API is reading.</p>
+        </div>
+      </div>
+    </section>
+
+    <hr class="section-divider">
+
+    <!-- Troubleshooting -->
+    <section class="step-section" id="troubleshooting">
+      <div class="step-header">
+        <div class="step-number" style="background: var(--amber); font-size:16px;">?</div>
+        <div class="step-title-group">
+          <h2>Troubleshooting</h2>
+          <span class="step-subtitle">common errors and fixes</span>
+        </div>
+      </div>
+      <div class="step-body">
+
+        <h3>401 Unauthorized from .NET API</h3>
+        <div class="callout callout-error">
+          <div class="callout-title">Fix</div>
+          <p>Check that the <strong>Issuer</strong> in <span class="inline-code">appsettings.json</span> exactly matches the Authorization Server issuer in Okta (Security → API). Also confirm the <strong>Audience</strong> matches — it's case-sensitive. A trailing slash mismatch is a common culprit.</p>
+        </div>
+
+        <h3>CORS error in browser console</h3>
+        <div class="callout callout-error">
+          <div class="callout-title">Fix</div>
+          <p>Make sure <span class="inline-code">app.UseCors("ReactApp")</span> appears in <span class="inline-code">Program.cs</span> <strong>before</strong> <span class="inline-code">app.UseAuthentication()</span>. Also confirm your React dev server is actually on port 3000 (Vite defaults to 5173 — update the CORS origin if so).</p>
+        </div>
+
+        <h3>Redirect URI mismatch error from Okta</h3>
+        <div class="callout callout-error">
+          <div class="callout-title">Fix</div>
+          <p>The redirect URI in Okta must <strong>exactly match</strong> (including http vs https and trailing slash) the URI your app is using. Go to your Okta app settings and confirm <span class="inline-code">http://localhost:3000/login/callback</span> is listed exactly as-is.</p>
+        </div>
+
+        <h3>Vite running on port 5173, not 3000</h3>
+        <div class="callout callout-warning">
+          <div class="callout-title">Fix</div>
+          <p>Either update all your redirect URIs and CORS to use <span class="inline-code">5173</span>, or force Vite to use 3000 by adding to <span class="inline-code">vite.config.js</span>: <span class="inline-code">server: { port: 3000 }</span></p>
+        </div>
+
+        <h3>Token audience mismatch</h3>
+        <div class="callout callout-error">
+          <div class="callout-title">Fix</div>
+          <p>The access token's <span class="inline-code">aud</span> claim must match the <span class="inline-code">Audience</span> value in your .NET config. The default Authorization Server uses <span class="inline-code">api://default</span>. If you created a custom Authorization Server, it may have a different audience. Check via jwt.io.</p>
+        </div>
+      </div>
+    </section>
+
+    <hr class="section-divider">
+
+    <div style="text-align: center; padding: 2rem 0 1rem; color: var(--muted); font-size: 14px;">
+      <p>Tutorial complete · React + .NET 10 + Okta</p>
+      <p style="margin-top: 4px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--border2);">Next steps: add role-based access, refresh tokens, and production HTTPS config</p>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  function copyCode(btn) {
+    const pre = btn.closest('.code-block').querySelector('pre');
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+
+  function toggleCheck(li) {
+    li.classList.toggle('checked');
+    const check = li.querySelector('.check');
+    check.innerHTML = li.classList.contains('checked') ? '<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '';
+  }
+
+  // Progress bar
+  window.addEventListener('scroll', () => {
+    const doc = document.documentElement;
+    const scrolled = doc.scrollTop / (doc.scrollHeight - doc.clientHeight);
+    document.getElementById('progressFill').style.width = (scrolled * 100) + '%';
+  });
+
+  // Active nav item highlighting
+  const sections = document.querySelectorAll('.step-section');
+  const navItems = document.querySelectorAll('.nav-item');
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.id;
+        navItems.forEach(item => {
+          item.classList.remove('active');
+          if (item.getAttribute('href') === '#' + id) item.classList.add('active');
+        });
+      }
+    });
+  }, { rootMargin: '-20% 0px -60% 0px' });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>
