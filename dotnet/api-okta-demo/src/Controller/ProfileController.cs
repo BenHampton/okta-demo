@@ -18,8 +18,10 @@ public class ProfileController : ControllerBase
     public IActionResult GetMe()
     {
         // User.Identity is populated from the JWT claims
-        var name  = User.Identity?.Name;
-        var email = User.FindFirst("sub")?.Value;
+        var name  = User.FindFirst("name")?.Value;
+        var email = User.FindFirst("userEmail")?.Value;
+        
+        var allClaims = User.Claims.Select(c => new { c.Type, c.Value });
 
         return Ok(new {
             message = "You are authenticated!",

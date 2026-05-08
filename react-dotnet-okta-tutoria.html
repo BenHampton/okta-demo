@@ -553,6 +553,9 @@
     <a class="nav-item" href="#okta-apps">
       <span class="step-num">2</span> Register applications
     </a>
+    <a class="nav-item" href="#okta-config">
+      <span class="step-num">2b</span> Configure policies
+    </a>
 
     <div class="nav-section">Backend</div>
     <a class="nav-item" href="#dotnet-setup">
@@ -735,8 +738,8 @@
           <tbody>
             <tr><td>App integration name</td><td>My React App<span class="hint">Can be anything descriptive</span></td></tr>
             <tr><td>Grant type</td><td>Authorization Code (checked by default)<span class="hint">PKCE is automatically enabled for SPAs</span></td></tr>
-            <tr><td>Sign-in redirect URIs</td><td><span class="inline-code">http://localhost:3000/login/callback</span></td></tr>
-            <tr><td>Sign-out redirect URIs</td><td><span class="inline-code">http://localhost:3000</span></td></tr>
+            <tr><td>Sign-in redirect URIs</td><td><span class="inline-code">http://localhost:5173/login/callback</span></td></tr>
+            <tr><td>Sign-out redirect URIs</td><td><span class="inline-code">http://localhost:5173</span></td></tr>
             <tr><td>Controlled access</td><td>Allow everyone in your organization<span class="hint">Easiest for dev; tighten in production</span></td></tr>
           </tbody>
         </table>
@@ -753,6 +756,117 @@
           <li onclick="toggleCheck(this)"><div class="check"></div><span><strong>Issuer URI</strong> — looks like <span class="inline-code">https://yourname-integrator-1234567.okta.com/oauth2/default</span></span></li>
           <li onclick="toggleCheck(this)"><div class="check"></div><span><strong>Audience</strong> — default is <span class="inline-code">api://default</span> (this goes in your .NET config)</span></li>
         </ul>
+      </div>
+    </section>
+
+    <hr class="section-divider">
+
+    <!-- STEP 2b: Okta Configuration -->
+    <section class="step-section" id="okta-config">
+      <div class="step-header">
+        <div class="step-number" style="font-size:13px;">2b</div>
+        <div class="step-title-group">
+          <h2>Configure Okta policies</h2>
+          <span class="step-subtitle">auth policy · access policy · user activation</span>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>New Okta Integrator accounts require several policy configurations that aren't set up by default. Skipping these will result in <span class="inline-code">Policy evaluation failed</span> and <span class="inline-code">access_denied</span> errors when logging in.</p>
+
+        <div class="callout callout-warning">
+          <div class="callout-title">Federation Broker Mode</div>
+          <p>New Okta Integrator accounts use <strong>Federation Broker Mode</strong> by default — user access is controlled entirely by policies, not manual user assignment. This means every policy below must be configured correctly or logins will fail.</p>
+        </div>
+
+        <h3>1. Create an Authentication Policy</h3>
+        <p>The default policy requires two factors (MFA) which blocks users during development. Create a simpler one:</p>
+        <ol class="steps-list">
+          <li>Go to <strong>Security → Authentication Policies</strong></li>
+          <li>Click <strong>Create Policy</strong></li>
+          <li>Name it <strong>Dev Policy</strong> → click <strong>Save</strong></li>
+          <li>Click <strong>Add Rule</strong> inside the new policy</li>
+          <li>Name it <strong>Allow All</strong></li>
+          <li>Set <strong>"And the user must authenticate with"</strong> to <strong>Password</strong></li>
+          <li>Set <strong>"When signing in, prompt for"</strong> to <strong>"If the global session exists, allow the user to authenticate silently through SSO"</strong></li>
+          <li>Set <strong>"Then access is"</strong> to <strong>Allowed</strong></li>
+          <li>Click <strong>Save</strong> — make sure this rule is <strong>above</strong> the Catch-all Rule</li>
+        </ol>
+
+        <h3>2. Assign the Authentication Policy to your app</h3>
+        <ol class="steps-list">
+          <li>Go to <strong>Applications → Applications → your app</strong></li>
+          <li>Click the <strong>Sign On</strong> tab</li>
+          <li>Scroll to <strong>User authentication</strong> → click <strong>Edit</strong></li>
+          <li>Change the policy to your new <strong>Dev Policy</strong></li>
+          <li>Click <strong>Save</strong></li>
+        </ol>
+
+        <h3>3. Add an Authorization Server Access Policy</h3>
+        <p>Without this, Okta blocks all token requests — your app will authenticate but never receive a JWT.</p>
+        <ol class="steps-list">
+          <li>Go to <strong>Security → API</strong></li>
+          <li>Click the <strong>default</strong> Authorization Server</li>
+          <li>Go to the <strong>Access Policies</strong> tab</li>
+          <li>Click <strong>Add Policy</strong></li>
+          <li>Name it <strong>Dev Policy</strong></li>
+          <li>Set <strong>"Assign to"</strong> to your specific app</li>
+          <li>Click <strong>Create Policy</strong></li>
+          <li>Click <strong>Add Rule</strong></li>
+          <li>Name it <strong>Allow All</strong>, leave all defaults</li>
+          <li>Click <strong>Create Rule</strong></li>
+        </ol>
+
+        <h3>4. Activate your test user</h3>
+        <p>New users have a <strong>"Pending user action"</strong> status until they activate their account.</p>
+        <ol class="steps-list">
+          <li>Go to <strong>Directory → People → your test user</strong></li>
+          <li>If status is <strong>Pending</strong> → click <strong>More Actions → Resend Activation Email</strong></li>
+          <li>The user clicks the link in the email to activate and set their password</li>
+          <li>Status should change to <strong>Active</strong> before attempting to log in</li>
+        </ol>
+
+        <div class="callout callout-tip">
+          <div class="callout-title">Skip the activation email</div>
+          <p>For a test user you control, click <strong>More Actions → Activate</strong> and set the password directly — no email needed.</p>
+        </div>
+
+        <div class="callout callout-info">
+          <div class="callout-title">Production note</div>
+          <p>The "Password only" policy is fine for local development. In production you should enforce MFA — change the Authentication Policy to require at least 2 factors and ensure users are enrolled in Okta Verify or another authenticator.</p>
+        </div>
+
+        <h3>5. Add name and userEmail claims to the access token</h3>
+        <p>By default Okta's access token doesn't include <span class="inline-code">name</span> or <span class="inline-code">userEmail</span> — you need to add them as custom claims. Without this your <span class="inline-code">/api/profile/me</span> endpoint will return <span class="inline-code">null</span> for both fields.</p>
+        <ol class="steps-list">
+          <li>Go to <strong>Security → API → default</strong> Authorization Server</li>
+          <li>Click the <strong>Claims</strong> tab</li>
+          <li>Click <strong>Add Claim</strong> and fill in:
+            <br>— <strong>Name</strong>: <span class="inline-code">name</span>
+            <br>— <strong>Include in token type</strong>: Access Token
+            <br>— <strong>Value type</strong>: Expression
+            <br>— <strong>Value</strong>: <span class="inline-code">user.displayName</span>
+            <br>— <strong>Include in</strong>: Any scope
+            <br>— Click <strong>Create</strong>
+          </li>
+          <li>Click <strong>Add Claim</strong> again and fill in:
+            <br>— <strong>Name</strong>: <span class="inline-code">userEmail</span>
+            <br>— <strong>Include in token type</strong>: Access Token
+            <br>— <strong>Value type</strong>: Expression
+            <br>— <strong>Value</strong>: <span class="inline-code">user.email</span>
+            <br>— <strong>Include in</strong>: Any scope
+            <br>— Click <strong>Create</strong>
+          </li>
+        </ol>
+
+        <div class="callout callout-warning">
+          <div class="callout-title">Why userEmail instead of email?</div>
+          <p>The claim name <span class="inline-code">email</span> conflicts with a built-in .NET claim type — even after clearing the inbound claim map, .NET silently drops it. Naming it <span class="inline-code">userEmail</span> avoids the conflict and works reliably with <span class="inline-code">User.FindFirst("userEmail")</span> in the controller.</p>
+        </div>
+
+        <div class="callout callout-warning">
+          <div class="callout-title">Log out and back in after adding claims</div>
+          <p>Existing tokens won't include the new claims — they're only added to newly issued tokens. Log out of your React app and log back in to get a fresh token with <span class="inline-code">name</span> and <span class="inline-code">userEmail</span> populated.</p>
+        </div>
       </div>
     </section>
 
@@ -864,7 +978,7 @@ dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer</code></pre>
         </div>
 
         <h3>2. Update Program.cs</h3>
-        <p>Wire up JWT Bearer authentication and CORS (so your React app on port 3000 can call the API).</p>
+        <p>Wire up JWT Bearer authentication and CORS (so your React app on port 5173 can call the API).</p>
 
         <div class="code-block">
           <div class="code-header">
@@ -894,7 +1008,7 @@ builder<span class="punc">.</span>Services<span class="punc">.</span><span class
 <span class="cmt">// Allow React dev server to call the API</span>
 builder<span class="punc">.</span>Services<span class="punc">.</span><span class="fn">AddCors</span><span class="punc">(</span>options <span class="punc">=></span>
   options<span class="punc">.</span><span class="fn">AddPolicy</span><span class="punc">(</span><span class="str">"ReactApp"</span><span class="punc">,</span> policy <span class="punc">=></span>
-    policy<span class="punc">.</span><span class="fn">WithOrigins</span><span class="punc">(</span><span class="str">"http://localhost:3000"</span><span class="punc">)</span>
+    policy<span class="punc">.</span><span class="fn">WithOrigins</span><span class="punc">(</span><span class="str">"http://localhost:5173"</span><span class="punc">)</span>
           <span class="punc">.</span><span class="fn">AllowAnyHeader</span><span class="punc">()</span>
           <span class="punc">.</span><span class="fn">AllowAnyMethod</span><span class="punc">()</span>
   <span class="punc">)</span>
@@ -964,8 +1078,8 @@ app<span class="punc">.</span><span class="fn">Run</span><span class="punc">();<
     <span class="kw">public</span> <span class="type">IActionResult</span> <span class="fn">GetMe</span><span class="punc">()</span>
     <span class="punc">{</span>
         <span class="cmt">// User.Identity is populated from the JWT claims</span>
-        <span class="kw">var</span> name  <span class="punc">=</span> User<span class="punc">.</span>Identity<span class="punc">?.</span>Name<span class="punc">;</span>
-        <span class="kw">var</span> email <span class="punc">=</span> User<span class="punc">.</span><span class="fn">FindFirst</span><span class="punc">(</span><span class="str">"sub"</span><span class="punc">)?.</span>Value<span class="punc">;</span>
+        <span class="kw">var</span> name  <span class="punc">=</span> User<span class="punc">.</span><span class="fn">FindFirst</span><span class="punc">(</span><span class="str">"name"</span><span class="punc">)?.</span>Value<span class="punc">;</span>
+        <span class="kw">var</span> email <span class="punc">=</span> User<span class="punc">.</span><span class="fn">FindFirst</span><span class="punc">(</span><span class="str">"userEmail"</span><span class="punc">)?.</span>Value<span class="punc">;</span>
 
         <span class="kw">return</span> <span class="fn">Ok</span><span class="punc">(</span><span class="kw">new</span> <span class="punc">{</span>
             message <span class="punc">=</span> <span class="str">"You are authenticated!"</span><span class="punc">,</span>
@@ -1009,8 +1123,8 @@ dotnet run</code></pre>
             <span class="code-lang">bash</span>
             <button class="copy-btn" onclick="copyCode(this)">copy</button>
           </div>
-          <pre><code><span class="cmt"># Create the app (in a separate folder from MyApi)</span>
-npm create vite@latest my-react-app -- --template react
+          <pre><code><span class="cmt"># Create the app with TypeScript template</span>
+npm create vite@latest my-react-app -- --template react-ts
 <span class="fn">cd</span> my-react-app
 npm install</code></pre>
         </div>
@@ -1043,11 +1157,11 @@ npm install</code></pre>
         </div>
 
         <h3>Create the Okta config file</h3>
-        <p>Create a new file <span class="inline-code">src/oktaConfig.js</span> with your app's settings from Step 2.</p>
+        <p>Create a new file <span class="inline-code">src/oktaConfig.ts</span> with your app's settings from Step 2.</p>
 
         <div class="code-block">
           <div class="code-header">
-            <span class="code-filename">src/oktaConfig.js</span>
+            <span class="code-filename">src/oktaConfig.ts</span>
             <button class="copy-btn" onclick="copyCode(this)">copy</button>
           </div>
           <pre><code><span class="kw">const</span> oktaConfig <span class="punc">=</span> <span class="punc">{</span>
@@ -1076,63 +1190,138 @@ npm install</code></pre>
         <div class="step-number">8</div>
         <div class="step-title-group">
           <h2>Set up routing and login UI</h2>
-          <span class="step-subtitle">OktaAuth provider + SecureRoute</span>
+          <span class="step-subtitle">root.tsx · routes · layout shell</span>
         </div>
       </div>
       <div class="step-body">
-        <p>Now wire everything together. We'll update <span class="inline-code">main.jsx</span>, create a <span class="inline-code">Home</span> page, and a protected <span class="inline-code">Dashboard</span> page.</p>
+        <p>Now wire everything together. We'll rename <span class="inline-code">main.tsx</span> to <span class="inline-code">root.tsx</span>, move the routes there, simplify <span class="inline-code">App.tsx</span> to a layout shell, and create a custom <span class="inline-code">RequireAuth</span> component (the Okta SDK's built-in one only works with react-router-dom v5).</p>
 
-        <h3>Update main.jsx</h3>
+        <div class="callout callout-info">
+          <div class="callout-title">Why root.tsx instead of main.tsx?</div>
+          <p>The Vite default entry point is <span class="inline-code">main.tsx</span>, but we're renaming it to <span class="inline-code">root.tsx</span> to better reflect its purpose — it's the root of the entire app tree, not just a generic entry point. It sets up all global providers (<span class="inline-code">StrictMode</span>, <span class="inline-code">BrowserRouter</span>, <span class="inline-code">Security</span>) <strong>and</strong> defines the routes. This keeps <span class="inline-code">App.tsx</span> clean as a layout shell rather than a routing file.</p>
+        </div>
+
+        <h3>Step 1 — Rename main.tsx and update index.html</h3>
+        <p>Rename <span class="inline-code">src/main.tsx</span> to <span class="inline-code">src/root.tsx</span>, then update the script tag in <span class="inline-code">index.html</span>:</p>
+
         <div class="code-block">
           <div class="code-header">
-            <span class="code-filename">src/main.jsx</span>
+            <span class="code-filename">index.html</span>
             <button class="copy-btn" onclick="copyCode(this)">copy</button>
           </div>
-          <pre><code><span class="kw">import</span> React <span class="kw">from</span> <span class="str">'react'</span>
-<span class="kw">import</span> ReactDOM <span class="kw">from</span> <span class="str">'react-dom/client'</span>
-<span class="kw">import</span> <span class="punc">{</span> BrowserRouter <span class="punc">}</span> <span class="kw">from</span> <span class="str">'react-router-dom'</span>
+          <pre><code><span class="cmt">&lt;!-- Change this line --&gt;</span>
+<span class="tag">&lt;script</span> <span class="prop">type</span><span class="punc">=</span><span class="str">"module"</span> <span class="prop">src</span><span class="punc">=</span><span class="str">"/src/root.tsx"</span><span class="tag">&gt;&lt;/script&gt;</span></code></pre>
+        </div>
+
+        <h3>Step 2 — Create RequireAuth.tsx</h3>
+        <p>The Okta SDK's built-in <span class="inline-code">SecureRoute</span> only works with react-router-dom v5. Since Vite projects use v6, we write our own protected route wrapper. Create this file:</p>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-filename">src/components/RequireAuth.tsx</span>
+            <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          </div>
+          <pre><code><span class="kw">import</span> <span class="punc">{</span> useEffect <span class="punc">}</span> <span class="kw">from</span> <span class="str">'react'</span>
+<span class="kw">import</span> <span class="punc">{</span> useOktaAuth <span class="punc">}</span> <span class="kw">from</span> <span class="str">'@okta/okta-react'</span>
+<span class="kw">import</span> <span class="punc">{</span> toRelativeUrl <span class="punc">}</span> <span class="kw">from</span> <span class="str">'@okta/okta-auth-js'</span>
+<span class="kw">import</span> <span class="punc">{</span> Outlet <span class="punc">}</span> <span class="kw">from</span> <span class="str">'react-router-dom'</span>
+<span class="cmt">// import { AppLoader } from '~/components/AppLoader/AppLoader'</span>
+
+<span class="kw">export const</span> <span class="fn">RequiredAuth</span> <span class="punc">=</span> <span class="punc">()</span> <span class="punc">=></span> <span class="punc">{</span>
+  <span class="kw">const</span> <span class="punc">{</span> oktaAuth<span class="punc">,</span> authState <span class="punc">}</span> <span class="punc">=</span> <span class="fn">useOktaAuth</span><span class="punc">();</span>
+
+  <span class="fn">useEffect</span><span class="punc">(()</span> <span class="punc">=></span> <span class="punc">{</span>
+    <span class="kw">if</span> <span class="punc">(!</span>authState<span class="punc">)</span> <span class="kw">return</span><span class="punc">;</span>
+
+    <span class="kw">if</span> <span class="punc">(!</span>authState<span class="punc">?.</span>isAuthenticated<span class="punc">)</span> <span class="punc">{</span>
+      <span class="kw">const</span> originalUri <span class="punc">=</span> <span class="fn">toRelativeUrl</span><span class="punc">(</span>window<span class="punc">.</span>location<span class="punc">.</span>href<span class="punc">,</span> window<span class="punc">.</span>location<span class="punc">.</span>origin<span class="punc">)</span>
+      oktaAuth<span class="punc">.</span><span class="fn">setOriginalUri</span><span class="punc">(</span>originalUri<span class="punc">)</span>
+      oktaAuth<span class="punc">.</span><span class="fn">signInWithRedirect</span><span class="punc">()</span>
+    <span class="punc">}</span>
+  <span class="punc">},</span> <span class="punc">[</span>oktaAuth<span class="punc">,</span> authState<span class="punc">,</span> authState<span class="punc">?.</span>isAuthenticated<span class="punc">])</span>
+
+  <span class="kw">if</span> <span class="punc">(!</span>authState <span class="punc">||</span> <span class="punc">!</span>authState<span class="punc">?.</span>isAuthenticated<span class="punc">)</span> <span class="punc">{</span>
+    <span class="cmt">// return &lt;AppLoader /&gt;</span>
+    <span class="kw">return</span> <span class="str">'Loading...'</span>
+  <span class="punc">}</span>
+
+  <span class="kw">return</span> <span class="punc">(</span>
+    <span class="tag">&lt;&gt;</span>
+      <span class="tag">&lt;Outlet /&gt;</span>
+    <span class="tag">&lt;/&gt;</span>
+  <span class="punc">)</span>
+<span class="punc">}</span></code></pre>
+        </div>
+
+        <div class="callout callout-info">
+          <div class="callout-title">Why this is better than a simple redirect</div>
+          <p><span class="inline-code">toRelativeUrl</span> + <span class="inline-code">setOriginalUri</span> saves where the user was trying to go before being redirected to login. After a successful login, Okta automatically sends them back to that page — so navigating directly to <span class="inline-code">/dashboard</span> while logged out will land them on <span class="inline-code">/dashboard</span> after login, not the home page. The <span class="inline-code">useEffect</span> handles the redirect as a side effect rather than during render, which is the React-correct approach. The commented-out <span class="inline-code">AppLoader</span> is a placeholder — swap <span class="inline-code">'Loading...'</span> for a spinner component when you're ready.</p>
+        </div>
+
+        <h3>Step 3 — Write root.tsx</h3>
+        <p>This file sets up all providers and defines every route. Replace the entire file contents:</p>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-filename">src/root.tsx</span>
+            <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          </div>
+          <pre><code><span class="kw">import</span> <span class="punc">{</span> StrictMode <span class="punc">}</span> <span class="kw">from</span> <span class="str">'react'</span>
+<span class="kw">import</span> <span class="punc">{</span> createRoot <span class="punc">}</span> <span class="kw">from</span> <span class="str">'react-dom/client'</span>
+<span class="kw">import</span> <span class="punc">{</span> BrowserRouter<span class="punc">,</span> Route<span class="punc">,</span> Routes <span class="punc">}</span> <span class="kw">from</span> <span class="str">'react-router-dom'</span>
 <span class="kw">import</span> <span class="punc">{</span> OktaAuth <span class="punc">}</span> <span class="kw">from</span> <span class="str">'@okta/okta-auth-js'</span>
-<span class="kw">import</span> <span class="punc">{</span> Security <span class="punc">}</span> <span class="kw">from</span> <span class="str">'@okta/okta-react'</span>
+<span class="kw">import</span> <span class="punc">{</span> LoginCallback<span class="punc">,</span> Security <span class="punc">}</span> <span class="kw">from</span> <span class="str">'@okta/okta-react'</span>
 <span class="kw">import</span> oktaConfig <span class="kw">from</span> <span class="str">'./oktaConfig'</span>
-<span class="kw">import</span> App <span class="kw">from</span> <span class="str">'./App'</span>
+<span class="kw">import</span> <span class="punc">{</span> RequiredAuth <span class="punc">}</span> <span class="kw">from</span> <span class="str">'./components/RequireAuth'</span>
+<span class="kw">import</span> Home <span class="kw">from</span> <span class="str">'./pages/Home'</span>
+<span class="kw">import</span> Dashboard <span class="kw">from</span> <span class="str">'./pages/Dashboard'</span>
 <span class="kw">import</span> <span class="str">'./index.css'</span>
 
 <span class="kw">const</span> oktaAuth <span class="punc">=</span> <span class="kw">new</span> <span class="fn">OktaAuth</span><span class="punc">(</span>oktaConfig<span class="punc">);</span>
 
-<span class="kw">const</span> <span class="fn">restoreOriginalUri</span> <span class="punc">=</span> <span class="kw">async</span> <span class="punc">(</span>_oktaAuth<span class="punc">,</span> originalUri<span class="punc">)</span> <span class="punc">=></span> <span class="punc">{</span>
+<span class="cmt">// _oktaAuth is required by the signature but unused — underscore signals this intentionally</span>
+<span class="kw">const</span> <span class="fn">restoreOriginalUri</span> <span class="punc">=</span> <span class="kw">async</span> <span class="punc">(</span>_oktaAuth<span class="punc">:</span> <span class="type">OktaAuth</span><span class="punc">,</span> originalUri<span class="punc">:</span> <span class="type">string</span><span class="punc">)</span><span class="punc">:</span> <span class="type">Promise</span><span class="punc">&lt;</span><span class="kw">void</span><span class="punc">&gt;</span> <span class="punc">=></span> <span class="punc">{</span>
   window<span class="punc">.</span>location<span class="punc">.</span>replace<span class="punc">(</span>originalUri <span class="punc">||</span> <span class="str">'/'</span><span class="punc">);</span>
 <span class="punc">};</span>
 
-ReactDOM<span class="punc">.</span><span class="fn">createRoot</span><span class="punc">(</span>document<span class="punc">.</span><span class="fn">getElementById</span><span class="punc">(</span><span class="str">'root'</span><span class="punc">))</span>
+<span class="fn">createRoot</span><span class="punc">(</span>document<span class="punc">.</span><span class="fn">getElementById</span><span class="punc">(</span><span class="str">'root'</span><span class="punc">)</span><span class="punc">!</span><span class="punc">)</span>
   <span class="punc">.</span><span class="fn">render</span><span class="punc">(</span>
-    <span class="tag">&lt;BrowserRouter&gt;</span>
-      <span class="tag">&lt;Security</span> <span class="prop">oktaAuth</span><span class="punc">={</span>oktaAuth<span class="punc">}</span> <span class="prop">restoreOriginalUri</span><span class="punc">={</span>restoreOriginalUri<span class="punc">}</span><span class="tag">&gt;</span>
-        <span class="tag">&lt;App /&gt;</span>
-      <span class="tag">&lt;/Security&gt;</span>
-    <span class="tag">&lt;/BrowserRouter&gt;</span>
+    <span class="tag">&lt;StrictMode&gt;</span>
+      <span class="tag">&lt;BrowserRouter&gt;</span>
+        <span class="tag">&lt;Security</span> <span class="prop">oktaAuth</span><span class="punc">={</span>oktaAuth<span class="punc">}</span> <span class="prop">restoreOriginalUri</span><span class="punc">={</span>restoreOriginalUri<span class="punc">}</span><span class="tag">&gt;</span>
+          <span class="tag">&lt;Routes&gt;</span>
+            <span class="tag">&lt;Route</span> <span class="prop">path</span><span class="punc">=</span><span class="str">"/"</span> <span class="prop">element</span><span class="punc">={</span><span class="tag">&lt;Home /&gt;</span><span class="punc">}</span> <span class="tag">/&gt;</span>
+            <span class="tag">&lt;Route</span> <span class="prop">path</span><span class="punc">=</span><span class="str">"/login/callback"</span> <span class="prop">element</span><span class="punc">={</span><span class="tag">&lt;LoginCallback /&gt;</span><span class="punc">}</span> <span class="tag">/&gt;</span>
+            <span class="tag">&lt;Route</span> <span class="prop">element</span><span class="punc">={</span><span class="tag">&lt;RequiredAuth /&gt;</span><span class="punc">}</span><span class="tag">&gt;</span>
+              <span class="tag">&lt;Route</span> <span class="prop">path</span><span class="punc">=</span><span class="str">"/dashboard"</span> <span class="prop">element</span><span class="punc">={</span><span class="tag">&lt;Dashboard /&gt;</span><span class="punc">}</span> <span class="tag">/&gt;</span>
+            <span class="tag">&lt;/Route&gt;</span>
+          <span class="tag">&lt;/Routes&gt;</span>
+        <span class="tag">&lt;/Security&gt;</span>
+      <span class="tag">&lt;/BrowserRouter&gt;</span>
+    <span class="tag">&lt;/StrictMode&gt;</span>
   <span class="punc">);</span></code></pre>
         </div>
 
-        <h3>Update App.jsx</h3>
+        <h3>Step 4 — Simplify App.tsx to a layout shell</h3>
+        <p><span class="inline-code">App.tsx</span> is now purely a layout shell — a place to add a shared nav bar, header, or footer later. Routes live in <span class="inline-code">root.tsx</span>, not here. Replace the entire file:</p>
+
         <div class="code-block">
           <div class="code-header">
-            <span class="code-filename">src/App.jsx</span>
+            <span class="code-filename">src/App.tsx</span>
             <button class="copy-btn" onclick="copyCode(this)">copy</button>
           </div>
-          <pre><code><span class="kw">import</span> <span class="punc">{</span> Route<span class="punc">,</span> Routes <span class="punc">}</span> <span class="kw">from</span> <span class="str">'react-router-dom'</span>
-<span class="kw">import</span> <span class="punc">{</span> LoginCallback<span class="punc">,</span> RequiredAuth <span class="punc">}</span> <span class="kw">from</span> <span class="str">'@okta/okta-react'</span>
-<span class="kw">import</span> Home <span class="kw">from</span> <span class="str">'./pages/Home'</span>
-<span class="kw">import</span> Dashboard <span class="kw">from</span> <span class="str">'./pages/Dashboard'</span>
+          <pre><code><span class="kw">import</span> <span class="punc">{</span> ReactNode <span class="punc">}</span> <span class="kw">from</span> <span class="str">'react'</span>
 
-<span class="kw">export default function</span> <span class="fn">App</span><span class="punc">()</span> <span class="punc">{</span>
+<span class="kw">interface</span> <span class="type">AppProps</span> <span class="punc">{</span>
+  children<span class="punc">:</span> <span class="type">ReactNode</span><span class="punc">;</span>
+<span class="punc">}</span>
+
+<span class="kw">export default function</span> <span class="fn">App</span><span class="punc">(</span><span class="punc">{</span> children <span class="punc">}</span><span class="punc">:</span> <span class="type">AppProps</span><span class="punc">)</span><span class="punc">:</span> <span class="type">JSX.Element</span> <span class="punc">{</span>
   <span class="kw">return</span> <span class="punc">(</span>
-    <span class="tag">&lt;Routes&gt;</span>
-      <span class="tag">&lt;Route</span> <span class="prop">path</span><span class="punc">=</span><span class="str">"/"</span>        <span class="prop">element</span><span class="punc">={</span><span class="tag">&lt;Home /&gt;</span><span class="punc">}</span> <span class="tag">/&gt;</span>
-      <span class="tag">&lt;Route</span> <span class="prop">path</span><span class="punc">=</span><span class="str">"/login/callback"</span> <span class="prop">element</span><span class="punc">={</span><span class="tag">&lt;LoginCallback /&gt;</span><span class="punc">}</span> <span class="tag">/&gt;</span>
-      <span class="tag">&lt;Route</span> <span class="prop">element</span><span class="punc">={</span><span class="tag">&lt;RequiredAuth /&gt;</span><span class="punc">}</span><span class="tag">&gt;</span>
-        <span class="tag">&lt;Route</span> <span class="prop">path</span><span class="punc">=</span><span class="str">"/dashboard"</span> <span class="prop">element</span><span class="punc">={</span><span class="tag">&lt;Dashboard /&gt;</span><span class="punc">}</span> <span class="tag">/&gt;</span>
-      <span class="tag">&lt;/Route&gt;</span>
-    <span class="tag">&lt;/Routes&gt;</span>
+    <span class="tag">&lt;div</span> <span class="prop">className</span><span class="punc">=</span><span class="str">"app"</span><span class="tag">&gt;</span>
+      <span class="cmt">{/* Add a shared nav bar or header here later */}</span>
+      <span class="tag">&lt;main&gt;</span><span class="punc">{</span>children<span class="punc">}</span><span class="tag">&lt;/main&gt;</span>
+    <span class="tag">&lt;/div&gt;</span>
   <span class="punc">)</span>
 <span class="punc">}</span></code></pre>
         </div>
@@ -1140,13 +1329,13 @@ ReactDOM<span class="punc">.</span><span class="fn">createRoot</span><span class
         <h3>Create the Home page</h3>
         <div class="code-block">
           <div class="code-header">
-            <span class="code-filename">src/pages/Home.jsx</span>
+            <span class="code-filename">src/pages/Home.tsx</span>
             <button class="copy-btn" onclick="copyCode(this)">copy</button>
           </div>
           <pre><code><span class="kw">import</span> <span class="punc">{</span> useOktaAuth <span class="punc">}</span> <span class="kw">from</span> <span class="str">'@okta/okta-react'</span>
 <span class="kw">import</span> <span class="punc">{</span> useNavigate <span class="punc">}</span> <span class="kw">from</span> <span class="str">'react-router-dom'</span>
 
-<span class="kw">export default function</span> <span class="fn">Home</span><span class="punc">()</span> <span class="punc">{</span>
+<span class="kw">export default function</span> <span class="fn">Home</span><span class="punc">()</span><span class="punc">:</span> <span class="type">JSX.Element</span> <span class="punc">{</span>
   <span class="kw">const</span> <span class="punc">{</span> oktaAuth<span class="punc">,</span> authState <span class="punc">}</span> <span class="punc">=</span> <span class="fn">useOktaAuth</span><span class="punc">();</span>
   <span class="kw">const</span> navigate <span class="punc">=</span> <span class="fn">useNavigate</span><span class="punc">();</span>
 
@@ -1171,35 +1360,28 @@ ReactDOM<span class="punc">.</span><span class="fn">createRoot</span><span class
   <span class="punc">)</span>
 <span class="punc">}</span></code></pre>
         </div>
-      </div>
-    </section>
 
-    <hr class="section-divider">
-
-    <!-- STEP 9: Call Protected API -->
-    <section class="step-section" id="react-api">
-      <div class="step-header">
-        <div class="step-number">9</div>
-        <div class="step-title-group">
-          <h2>Call the protected .NET API</h2>
-          <span class="step-subtitle">Bearer token in Authorization header</span>
-        </div>
-      </div>
-      <div class="step-body">
-        <p>The Dashboard page gets the access token from Okta and sends it as a Bearer token to the .NET API.</p>
+        <h3>Create the Dashboard page</h3>
+        <p><span class="inline-code">Dashboard</span> is the protected page that calls the <span class="inline-code">/api/profile/me</span> endpoint on the .NET API. It's a regular React component — the protection comes from <span class="inline-code">RequiredAuth</span> wrapping its route in <span class="inline-code">root.tsx</span>, not from anything inside this file itself.</p>
 
         <div class="code-block">
           <div class="code-header">
-            <span class="code-filename">src/pages/Dashboard.jsx</span>
+            <span class="code-filename">src/pages/Dashboard.tsx</span>
             <button class="copy-btn" onclick="copyCode(this)">copy</button>
           </div>
           <pre><code><span class="kw">import</span> <span class="punc">{</span> useState<span class="punc">,</span> useEffect <span class="punc">}</span> <span class="kw">from</span> <span class="str">'react'</span>
 <span class="kw">import</span> <span class="punc">{</span> useOktaAuth <span class="punc">}</span> <span class="kw">from</span> <span class="str">'@okta/okta-react'</span>
 
-<span class="kw">export default function</span> <span class="fn">Dashboard</span><span class="punc">()</span> <span class="punc">{</span>
+<span class="kw">interface</span> <span class="type">ProfileData</span> <span class="punc">{</span>
+  message<span class="punc">:</span> <span class="type">string</span><span class="punc">;</span>
+  name<span class="punc">:</span> <span class="type">string</span><span class="punc">;</span>
+  email<span class="punc">:</span> <span class="type">string</span><span class="punc">;</span>
+<span class="punc">}</span>
+
+<span class="kw">export default function</span> <span class="fn">Dashboard</span><span class="punc">()</span><span class="punc">:</span> <span class="type">JSX.Element</span> <span class="punc">{</span>
   <span class="kw">const</span> <span class="punc">{</span> authState <span class="punc">}</span> <span class="punc">=</span> <span class="fn">useOktaAuth</span><span class="punc">();</span>
-  <span class="kw">const</span> <span class="punc">[</span>data<span class="punc">,</span> setData<span class="punc">]</span> <span class="punc">=</span> <span class="fn">useState</span><span class="punc">(</span><span class="kw">null</span><span class="punc">);</span>
-  <span class="kw">const</span> <span class="punc">[</span>error<span class="punc">,</span> setError<span class="punc">]</span> <span class="punc">=</span> <span class="fn">useState</span><span class="punc">(</span><span class="kw">null</span><span class="punc">);</span>
+  <span class="kw">const</span> <span class="punc">[</span>data<span class="punc">,</span> setData<span class="punc">]</span> <span class="punc">=</span> <span class="fn">useState</span><span class="punc">&lt;</span><span class="type">ProfileData</span> <span class="punc">|</span> <span class="kw">null</span><span class="punc">&gt;(</span><span class="kw">null</span><span class="punc">);</span>
+  <span class="kw">const</span> <span class="punc">[</span>error<span class="punc">,</span> setError<span class="punc">]</span> <span class="punc">=</span> <span class="fn">useState</span><span class="punc">&lt;</span><span class="type">string</span> <span class="punc">|</span> <span class="kw">null</span><span class="punc">&gt;(</span><span class="kw">null</span><span class="punc">);</span>
 
   <span class="fn">useEffect</span><span class="punc">(()</span> <span class="punc">=></span> <span class="punc">{</span>
     <span class="kw">if</span> <span class="punc">(!</span>authState<span class="punc">?.</span>accessToken<span class="punc">)</span> <span class="kw">return</span><span class="punc">;</span>
@@ -1211,9 +1393,9 @@ ReactDOM<span class="punc">.</span><span class="fn">createRoot</span><span class
         Authorization<span class="punc">:</span> <span class="str">`Bearer ${token}`</span>
       <span class="punc">}</span>
     <span class="punc">})</span>
-      <span class="punc">.</span><span class="fn">then</span><span class="punc">(</span>res <span class="punc">=></span> res<span class="punc">.</span><span class="fn">json</span><span class="punc">())</span>
+      <span class="punc">.</span><span class="fn">then</span><span class="punc">(</span><span class="punc">(</span>res<span class="punc">)</span> <span class="punc">=></span> res<span class="punc">.</span><span class="fn">json</span><span class="punc">()</span> <span class="kw">as</span> <span class="type">Promise</span><span class="punc">&lt;</span><span class="type">ProfileData</span><span class="punc">&gt;)</span>
       <span class="punc">.</span><span class="fn">then</span><span class="punc">(</span>setData<span class="punc">)</span>
-      <span class="punc">.</span><span class="fn">catch</span><span class="punc">(</span>err <span class="punc">=></span> <span class="fn">setError</span><span class="punc">(</span>err<span class="punc">.</span>message<span class="punc">));</span>
+      <span class="punc">.</span><span class="fn">catch</span><span class="punc">((</span>err<span class="punc">:</span> <span class="type">Error</span><span class="punc">)</span> <span class="punc">=></span> <span class="fn">setError</span><span class="punc">(</span>err<span class="punc">.</span>message<span class="punc">));</span>
   <span class="punc">},</span> <span class="punc">[</span>authState<span class="punc">]);</span>
 
   <span class="kw">return</span> <span class="punc">(</span>
@@ -1232,6 +1414,35 @@ ReactDOM<span class="punc">.</span><span class="fn">createRoot</span><span class
   <span class="punc">)</span>
 <span class="punc">}</span></code></pre>
         </div>
+      </div>
+    </section>
+
+    <hr class="section-divider">
+
+    <!-- STEP 9: Call Protected API -->
+    <section class="step-section" id="react-api">
+      <div class="step-header">
+        <div class="step-number">9</div>
+        <div class="step-title-group">
+          <h2>Call the protected .NET API</h2>
+          <span class="step-subtitle">Bearer token in Authorization header</span>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>The <span class="inline-code">Dashboard.tsx</span> you created in Step 8 already contains the API call. Here's how it works:</p>
+
+        <ol class="steps-list">
+          <li><span class="inline-code">useOktaAuth()</span> gives access to <span class="inline-code">authState</span>, which holds the access token after login</li>
+          <li>The token is extracted from <span class="inline-code">authState.accessToken.accessToken</span> — a JWT string</li>
+          <li>It's sent to the .NET API in the <span class="inline-code">Authorization: Bearer ...</span> header</li>
+          <li>The .NET API validates the token against Okta's public keys and returns the user's profile</li>
+          <li>The response is stored in state and rendered on screen</li>
+        </ol>
+
+        <div class="callout callout-info">
+          <div class="callout-title">Why not call the API directly from RequiredAuth?</div>
+          <p>Separation of concerns — <span class="inline-code">RequiredAuth</span> only handles the auth gate. Each page is responsible for fetching its own data. This keeps components focused and makes it easy to add more protected pages later without changing the auth logic.</p>
+        </div>
 
         <h3>Start the React app</h3>
         <div class="code-block">
@@ -1241,7 +1452,7 @@ ReactDOM<span class="punc">.</span><span class="fn">createRoot</span><span class
           </div>
           <pre><code>npm run dev</code></pre>
         </div>
-        <p>Open <span class="inline-code">http://localhost:3000</span> in your browser.</p>
+        <p>Open <span class="inline-code">http://localhost:5173</span> in your browser.</p>
       </div>
     </section>
 
@@ -1260,7 +1471,7 @@ ReactDOM<span class="punc">.</span><span class="fn">createRoot</span><span class
         <p>With both servers running, test the complete authentication flow:</p>
 
         <ol class="steps-list">
-          <li>Open <span class="inline-code">http://localhost:3000</span> — you should see the Home page with a <strong>Login with Okta</strong> button</li>
+          <li>Open <span class="inline-code">http://localhost:5173</span> — you should see the Home page with a <strong>Login with Okta</strong> button</li>
           <li>Click the button — you'll be redirected to your Okta-hosted login page</li>
           <li>Log in with the test user you created in Step 1</li>
           <li>Okta redirects back to <span class="inline-code">/login/callback</span>, the SDK processes the tokens</li>
@@ -1299,13 +1510,13 @@ ReactDOM<span class="punc">.</span><span class="fn">createRoot</span><span class
         <h3>CORS error in browser console</h3>
         <div class="callout callout-error">
           <div class="callout-title">Fix</div>
-          <p>Make sure <span class="inline-code">app.UseCors("ReactApp")</span> appears in <span class="inline-code">Program.cs</span> <strong>before</strong> <span class="inline-code">app.UseAuthentication()</span>. Also confirm your React dev server is actually on port 3000 (Vite defaults to 5173 — update the CORS origin if so).</p>
+          <p>Make sure <span class="inline-code">app.UseCors("ReactApp")</span> appears in <span class="inline-code">Program.cs</span> <strong>before</strong> <span class="inline-code">app.UseAuthentication()</span>. Also confirm your React dev server is actually on port 5173.</p>
         </div>
 
         <h3>Redirect URI mismatch error from Okta</h3>
         <div class="callout callout-error">
           <div class="callout-title">Fix</div>
-          <p>The redirect URI in Okta must <strong>exactly match</strong> (including http vs https and trailing slash) the URI your app is using. Go to your Okta app settings and confirm <span class="inline-code">http://localhost:3000/login/callback</span> is listed exactly as-is.</p>
+          <p>The redirect URI in Okta must <strong>exactly match</strong> (including http vs https and trailing slash) the URI your app is using. Go to your Okta app settings and confirm <span class="inline-code">http://localhost:5173/login/callback</span> is listed exactly as-is.</p>
         </div>
 
         <h3>Vite running on port 5173, not 3000</h3>

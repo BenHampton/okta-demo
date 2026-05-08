@@ -24,7 +24,7 @@ builder.Services.AddAuthorization();
 // Allow React dev server to call the API
 builder.Services.AddCors(options =>
     options.AddPolicy("ReactApp", policy =>
-        policy.WithOrigins("http://localhost:3000")
+        policy.WithOrigins("http://localhost:5173")
             .AllowAnyHeader()
             .AllowAnyMethod()
     )
