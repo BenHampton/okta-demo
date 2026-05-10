@@ -589,6 +589,23 @@
     <a class="nav-item" href="#troubleshooting">
       <span class="step-num">?</span> Troubleshooting
     </a>
+
+    <div class="nav-section" style="color: var(--green);">Spring Boot Alt</div>
+    <a class="nav-item" href="#sb-setup">
+      <span class="step-num" style="background: var(--green); color: white;">S1</span> Create project
+    </a>
+    <a class="nav-item" href="#sb-config">
+      <span class="step-num" style="background: var(--green); color: white;">S2</span> Configure properties
+    </a>
+    <a class="nav-item" href="#sb-security">
+      <span class="step-num" style="background: var(--green); color: white;">S3</span> Spring Security
+    </a>
+    <a class="nav-item" href="#sb-controller">
+      <span class="step-num" style="background: var(--green); color: white;">S4</span> Profile controller
+    </a>
+    <a class="nav-item" href="#sb-run">
+      <span class="step-num" style="background: var(--green); color: white;">S5</span> Run and test
+    </a>
   </nav>
 
   <!-- Main -->
@@ -1157,7 +1174,27 @@ npm install</code></pre>
         </div>
 
         <h3>Create the Okta config file</h3>
-        <p>Create a new file <span class="inline-code">src/oktaConfig.ts</span> with your app's settings from Step 2.</p>
+        <p>First create a <span class="inline-code">.env.local</span> file in the root of your React project. This keeps sensitive config out of git.</p>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-filename">.env.local</span>
+            <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          </div>
+          <pre><code>VITE_OKTA_CLIENT_ID=0oa1abc...xyz
+VITE_OKTA_ISSUER=https://yourname-integrator-1234567.okta.com/oauth2/default
+
+<span class="cmt"># API base URLs — switch between backends without changing component code</span>
+VITE_BASE_DOMAIN_DOTNET=http://localhost:5167
+VITE_BASE_DOMAIN_SPRING_BOOT=http://localhost:8080</code></pre>
+        </div>
+
+        <div class="callout callout-warning">
+          <div class="callout-title">Never commit .env.local to git</div>
+          <p>Vite projects include <span class="inline-code">*.local</span> in <span class="inline-code">.gitignore</span> by default — double check this is the case before pushing. Replace the placeholder values with your actual Okta Client ID and domain from Steps 1 and 2.</p>
+        </div>
+
+        <p>Now create <span class="inline-code">src/oktaConfig.ts</span> using the env variables:</p>
 
         <div class="code-block">
           <div class="code-header">
@@ -1165,14 +1202,33 @@ npm install</code></pre>
             <button class="copy-btn" onclick="copyCode(this)">copy</button>
           </div>
           <pre><code><span class="kw">const</span> oktaConfig <span class="punc">=</span> <span class="punc">{</span>
-  clientId<span class="punc">:</span>    <span class="str">'0oa1abc...xyz'</span><span class="punc">,</span>      <span class="cmt">// From Step 2 — your SPA Client ID</span>
-  issuer<span class="punc">:</span>     <span class="str">'https://yourname-integrator-1234567.okta.com/oauth2/default'</span><span class="punc">,</span>
+  clientId<span class="punc">:</span>    import<span class="punc">.</span>meta<span class="punc">.</span>env<span class="punc">.</span>VITE_OKTA_CLIENT_ID<span class="punc">,</span>
+  issuer<span class="punc">:</span>     import<span class="punc">.</span>meta<span class="punc">.</span>env<span class="punc">.</span>VITE_OKTA_ISSUER<span class="punc">,</span>
   redirectUri<span class="punc">:</span> <span class="str">`${window.location.origin}/login/callback`</span><span class="punc">,</span>
   scopes<span class="punc">:</span>     <span class="punc">[</span><span class="str">'openid'</span><span class="punc">,</span> <span class="str">'profile'</span><span class="punc">,</span> <span class="str">'email'</span><span class="punc">]</span><span class="punc">,</span>
   pkce<span class="punc">:</span>       <span class="kw">true</span><span class="punc">,</span>
 <span class="punc">};</span>
 
 <span class="kw">export default</span> oktaConfig<span class="punc">;</span></code></pre>
+        </div>
+
+        <p>Next create <span class="inline-code">src/config.ts</span> to expose the API base domain with <span class="inline-code">VITE_BASE_DOMAIN_DOTNET</span> as the default:</p>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-filename">src/config.ts</span>
+            <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          </div>
+          <pre><code><span class="kw">export const</span> baseDomainDotnet <span class="punc">=</span> import<span class="punc">.</span>meta<span class="punc">.</span>env<span class="punc">.</span>VITE_BASE_DOMAIN_DOTNET <span class="kw">as</span> <span class="type">string</span><span class="punc">;</span>
+<span class="kw">export const</span> baseDomainSpringBoot <span class="punc">=</span> import<span class="punc">.</span>meta<span class="punc">.</span>env<span class="punc">.</span>VITE_BASE_DOMAIN_SPRING_BOOT <span class="kw">as</span> <span class="type">string</span><span class="punc">;</span>
+
+<span class="cmt">// Default to .NET — swap to baseDomainSpringBoot to use Spring Boot</span>
+<span class="kw">export const</span> apiBaseUrl <span class="punc">=</span> baseDomainDotnet<span class="punc">;</span></code></pre>
+        </div>
+
+        <div class="callout callout-tip">
+          <div class="callout-title">Switching between backends</div>
+          <p>To switch from .NET to Spring Boot, just change the last line in <span class="inline-code">config.ts</span> to <span class="inline-code">export const apiBaseUrl = baseDomainSpringBoot</span>. No need to touch any component code.</p>
         </div>
 
         <div class="callout callout-warning">
@@ -1371,6 +1427,7 @@ npm install</code></pre>
           </div>
           <pre><code><span class="kw">import</span> <span class="punc">{</span> useState<span class="punc">,</span> useEffect <span class="punc">}</span> <span class="kw">from</span> <span class="str">'react'</span>
 <span class="kw">import</span> <span class="punc">{</span> useOktaAuth <span class="punc">}</span> <span class="kw">from</span> <span class="str">'@okta/okta-react'</span>
+<span class="kw">import</span> <span class="punc">{</span> apiBaseUrl <span class="punc">}</span> <span class="kw">from</span> <span class="str">'../config'</span>
 
 <span class="kw">interface</span> <span class="type">ProfileData</span> <span class="punc">{</span>
   message<span class="punc">:</span> <span class="type">string</span><span class="punc">;</span>
@@ -1388,7 +1445,7 @@ npm install</code></pre>
 
     <span class="kw">const</span> token <span class="punc">=</span> authState<span class="punc">.</span>accessToken<span class="punc">.</span>accessToken<span class="punc">;</span>
 
-    <span class="fn">fetch</span><span class="punc">(</span><span class="str">'http://localhost:5167/api/profile/me'</span><span class="punc">,</span> <span class="punc">{</span>
+    <span class="fn">fetch</span><span class="punc">(</span><span class="str">`${apiBaseUrl}/api/profile/me`</span><span class="punc">,</span> <span class="punc">{</span>
       headers<span class="punc">:</span> <span class="punc">{</span>
         Authorization<span class="punc">:</span> <span class="str">`Bearer ${token}`</span>
       <span class="punc">}</span>
@@ -1537,6 +1594,295 @@ npm install</code></pre>
 
     <div style="text-align: center; padding: 2rem 0 1rem; color: var(--muted); font-size: 14px;">
       <p>Tutorial complete · React + .NET 10 + Okta</p>
+      <p style="margin-top: 4px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--border2);">Next steps: add role-based access, refresh tokens, and production HTTPS config</p>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- SPRING BOOT SECTION -->
+    <div class="page-header" style="margin-top: 2rem;">
+      <div class="eyebrow">Alternative backend · Java</div>
+      <h1>Spring Boot + Okta</h1>
+      <p>The same authentication flow as the .NET API, but using Spring Boot 3 and Spring Security. Your React app stays exactly the same — only the backend changes.</p>
+      <div class="tech-stack">
+        <span class="tech-badge">Spring Boot 3</span>
+        <span class="tech-badge">Java 21</span>
+        <span class="tech-badge">Spring Security</span>
+        <span class="tech-badge">OAuth2 Resource Server</span>
+        <span class="tech-badge">Maven</span>
+      </div>
+    </div>
+
+    <!-- SB STEP 1 -->
+    <section class="step-section" id="sb-setup">
+      <div class="step-header">
+        <div class="step-number" style="background: var(--green);">S1</div>
+        <div class="step-title-group">
+          <h2>Create the Spring Boot project</h2>
+          <span class="step-subtitle">start.spring.io · Maven · Java 21</span>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Go to <a href="https://start.spring.io/" target="_blank" style="color: var(--accent2);">start.spring.io</a> and create a new project with these settings:</p>
+
+        <table class="config-table">
+          <thead><tr><th>Field</th><th>Value</th></tr></thead>
+          <tbody>
+            <tr><td>Project</td><td>Maven</td></tr>
+            <tr><td>Language</td><td>Java</td></tr>
+            <tr><td>Spring Boot</td><td>3.x (latest stable)</td></tr>
+            <tr><td>Group</td><td><span class="inline-code">com.example</span></td></tr>
+            <tr><td>Artifact</td><td><span class="inline-code">api-okta-demo</span></td></tr>
+            <tr><td>Java</td><td>21</td></tr>
+          </tbody>
+        </table>
+
+        <p>Add these <strong>dependencies</strong>:</p>
+        <ul class="checklist">
+          <li onclick="toggleCheck(this)"><div class="check"></div><span><strong>Spring Web</strong> — for REST controllers</span></li>
+          <li onclick="toggleCheck(this)"><div class="check"></div><span><strong>Spring Security</strong> — for authentication</span></li>
+          <li onclick="toggleCheck(this)"><div class="check"></div><span><strong>OAuth2 Resource Server</strong> — for JWT validation</span></li>
+        </ul>
+
+        <p>Click <strong>Generate</strong>, extract the zip, and open it in your IDE.</p>
+
+        <div class="callout callout-info">
+          <div class="callout-title">Why OAuth2 Resource Server?</div>
+          <p>Spring Security's OAuth2 Resource Server handles JWT validation automatically — it fetches Okta's public keys, verifies the token signature, checks the issuer and audience, and populates the security context. It's the Spring equivalent of <span class="inline-code">AddJwtBearer</span> in .NET.</p>
+        </div>
+      </div>
+    </section>
+
+    <hr class="section-divider">
+
+    <!-- SB STEP 2 -->
+    <section class="step-section" id="sb-config">
+      <div class="step-header">
+        <div class="step-number" style="background: var(--green);">S2</div>
+        <div class="step-title-group">
+          <h2>Configure application.properties</h2>
+          <span class="step-subtitle">issuer-uri · port</span>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Rename <span class="inline-code">src/main/resources/application.properties</span> to <span class="inline-code">application.yml</span> and add your Okta issuer. Spring Security uses this to auto-discover Okta's JWKS endpoint for token validation.</p>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-filename">src/main/resources/application.yml</span>
+            <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          </div>
+          <pre><code>spring:
+  application:
+    name: api-okta-demo
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://yourname-integrator-1234567.okta.com/oauth2/default
+
+server:
+  port: 8080</code></pre>
+        </div>
+
+        <div class="callout callout-warning">
+          <div class="callout-title">Replace with your Okta domain</div>
+          <p>Replace <span class="inline-code">yourname-integrator-1234567</span> with your actual Okta subdomain from Step 1. This is the same issuer URI used in your .NET <span class="inline-code">appsettings.json</span>.</p>
+        </div>
+
+        <div class="callout callout-tip">
+          <div class="callout-title">Use environment variables in production</div>
+          <p>Move the issuer URI to an <span class="inline-code">application-prod.properties</span> file or an environment variable <span class="inline-code">SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI</span> so it's not committed to git.</p>
+        </div>
+      </div>
+    </section>
+
+    <hr class="section-divider">
+
+    <!-- SB STEP 3 -->
+    <section class="step-section" id="sb-security">
+      <div class="step-header">
+        <div class="step-number" style="background: var(--green);">S3</div>
+        <div class="step-title-group">
+          <h2>Configure Spring Security</h2>
+          <span class="step-subtitle">SecurityConfig.java · CORS · JWT</span>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Create a security configuration class to enable JWT validation and allow your React app to call the API.</p>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-filename">src/main/java/com/example/apioktademo/SecurityConfig.java</span>
+            <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          </div>
+          <pre><code><span class="kw">package</span> com<span class="punc">.</span>example<span class="punc">.</span>apioktademo<span class="punc">;</span>
+
+<span class="kw">import</span> org<span class="punc">.</span>springframework<span class="punc">.</span>context<span class="punc">.</span>annotation<span class="punc">.</span>Bean<span class="punc">;</span>
+<span class="kw">import</span> org<span class="punc">.</span>springframework<span class="punc">.</span>context<span class="punc">.</span>annotation<span class="punc">.</span>Configuration<span class="punc">;</span>
+<span class="kw">import</span> org<span class="punc">.</span>springframework<span class="punc">.</span>security<span class="punc">.</span>config<span class="punc">.</span>annotation<span class="punc">.</span>web<span class="punc">.</span>builders<span class="punc">.</span>HttpSecurity<span class="punc">;</span>
+<span class="kw">import</span> org<span class="punc">.</span>springframework<span class="punc">.</span>security<span class="punc">.</span>web<span class="punc">.</span>SecurityFilterChain<span class="punc">;</span>
+<span class="kw">import</span> org<span class="punc">.</span>springframework<span class="punc">.</span>web<span class="punc">.</span>cors<span class="punc">.</span>CorsConfiguration<span class="punc">;</span>
+<span class="kw">import</span> org<span class="punc">.</span>springframework<span class="punc">.</span>web<span class="punc">.</span>cors<span class="punc">.</span>CorsConfigurationSource<span class="punc">;</span>
+<span class="kw">import</span> org<span class="punc">.</span>springframework<span class="punc">.</span>web<span class="punc">.</span>cors<span class="punc">.</span>UrlBasedCorsConfigurationSource<span class="punc">;</span>
+
+<span class="kw">import</span> java<span class="punc">.</span>util<span class="punc">.</span>List<span class="punc">;</span>
+
+<span class="punc">@</span><span class="type">Configuration</span>
+<span class="kw">public class</span> <span class="type">SecurityConfig</span> <span class="punc">{</span>
+
+    <span class="punc">@</span><span class="type">Bean</span>
+    <span class="kw">public</span> <span class="type">SecurityFilterChain</span> <span class="fn">filterChain</span><span class="punc">(</span><span class="type">HttpSecurity</span> http<span class="punc">)</span> <span class="kw">throws</span> <span class="type">Exception</span> <span class="punc">{</span>
+        http
+            <span class="punc">.</span><span class="fn">cors</span><span class="punc">(</span>cors <span class="punc">-></span> cors<span class="punc">.</span><span class="fn">configurationSource</span><span class="punc">(</span><span class="fn">corsConfigurationSource</span><span class="punc">()))</span>
+            <span class="punc">.</span><span class="fn">csrf</span><span class="punc">(</span>csrf <span class="punc">-></span> csrf<span class="punc">.</span><span class="fn">disable</span><span class="punc">())</span>
+            <span class="punc">.</span><span class="fn">authorizeHttpRequests</span><span class="punc">(</span>auth <span class="punc">-></span> auth
+                <span class="punc">.</span><span class="fn">requestMatchers</span><span class="punc">(</span><span class="str">"/api/profile/public"</span><span class="punc">).</span><span class="fn">permitAll</span><span class="punc">()</span>
+                <span class="punc">.</span><span class="fn">anyRequest</span><span class="punc">().</span><span class="fn">authenticated</span><span class="punc">()</span>
+            <span class="punc">)</span>
+            <span class="punc">.</span><span class="fn">oauth2ResourceServer</span><span class="punc">(</span>oauth2 <span class="punc">-></span> oauth2
+                <span class="punc">.</span><span class="fn">jwt</span><span class="punc">(</span>jwt <span class="punc">-></span> <span class="punc">{})</span>
+            <span class="punc">);</span>
+
+        <span class="kw">return</span> http<span class="punc">.</span><span class="fn">build</span><span class="punc">();</span>
+    <span class="punc">}</span>
+
+    <span class="punc">@</span><span class="type">Bean</span>
+    <span class="kw">public</span> <span class="type">CorsConfigurationSource</span> <span class="fn">corsConfigurationSource</span><span class="punc">()</span> <span class="punc">{</span>
+        <span class="type">CorsConfiguration</span> config <span class="punc">=</span> <span class="kw">new</span> <span class="type">CorsConfiguration</span><span class="punc">();</span>
+        config<span class="punc">.</span><span class="fn">setAllowedOrigins</span><span class="punc">(</span>List<span class="punc">.</span><span class="fn">of</span><span class="punc">(</span><span class="str">"http://localhost:5173"</span><span class="punc">));</span>
+        config<span class="punc">.</span><span class="fn">setAllowedMethods</span><span class="punc">(</span>List<span class="punc">.</span><span class="fn">of</span><span class="punc">(</span><span class="str">"GET"</span><span class="punc">,</span> <span class="str">"POST"</span><span class="punc">,</span> <span class="str">"PUT"</span><span class="punc">,</span> <span class="str">"DELETE"</span><span class="punc">,</span> <span class="str">"OPTIONS"</span><span class="punc">));</span>
+        config<span class="punc">.</span><span class="fn">setAllowedHeaders</span><span class="punc">(</span>List<span class="punc">.</span><span class="fn">of</span><span class="punc">(</span><span class="str">"*"</span><span class="punc">));</span>
+
+        <span class="type">UrlBasedCorsConfigurationSource</span> source <span class="punc">=</span> <span class="kw">new</span> <span class="type">UrlBasedCorsConfigurationSource</span><span class="punc">();</span>
+        source<span class="punc">.</span><span class="fn">registerCorsConfiguration</span><span class="punc">(</span><span class="str">"/**"</span><span class="punc">,</span> config<span class="punc">);</span>
+        <span class="kw">return</span> source<span class="punc">;</span>
+    <span class="punc">}</span>
+<span class="punc">}</span></code></pre>
+        </div>
+
+        <div class="callout callout-info">
+          <div class="callout-title">How this maps to .NET</div>
+          <p><span class="inline-code">oauth2ResourceServer().jwt()</span> is the Spring equivalent of <span class="inline-code">AddJwtBearer()</span>. <span class="inline-code">permitAll()</span> is the equivalent of no <span class="inline-code">[Authorize]</span> attribute, and <span class="inline-code">authenticated()</span> is the equivalent of <span class="inline-code">[Authorize]</span>.</p>
+        </div>
+      </div>
+    </section>
+
+    <hr class="section-divider">
+
+    <!-- SB STEP 4 -->
+    <section class="step-section" id="sb-controller">
+      <div class="step-header">
+        <div class="step-number" style="background: var(--green);">S4</div>
+        <div class="step-title-group">
+          <h2>Create the Profile controller</h2>
+          <span class="step-subtitle">public + protected endpoints</span>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Create the same public and protected endpoints as the .NET version. Spring Security populates a <span class="inline-code">JwtAuthenticationToken</span> from the validated JWT which you can use to read claims.</p>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-filename">src/main/java/com/example/apioktademo/ProfileController.java</span>
+            <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          </div>
+          <pre><code><span class="kw">package</span> com<span class="punc">.</span>example<span class="punc">.</span>apioktademo<span class="punc">;</span>
+
+<span class="kw">import</span> org<span class="punc">.</span>springframework<span class="punc">.</span>security<span class="punc">.</span>core<span class="punc">.</span>annotation<span class="punc">.</span>AuthenticationPrincipal<span class="punc">;</span>
+<span class="kw">import</span> org<span class="punc">.</span>springframework<span class="punc">.</span>security<span class="punc">.</span>oauth2<span class="punc">.</span>jwt<span class="punc">.</span>Jwt<span class="punc">;</span>
+<span class="kw">import</span> org<span class="punc">.</span>springframework<span class="punc">.</span>web<span class="punc">.</span>bind<span class="punc">.</span>annotation<span class="punc">.</span>GetMapping<span class="punc">;</span>
+<span class="kw">import</span> org<span class="punc">.</span>springframework<span class="punc">.</span>web<span class="punc">.</span>bind<span class="punc">.</span>annotation<span class="punc">.</span>RequestMapping<span class="punc">;</span>
+<span class="kw">import</span> org<span class="punc">.</span>springframework<span class="punc">.</span>web<span class="punc">.</span>bind<span class="punc">.</span>annotation<span class="punc">.</span>RestController<span class="punc">;</span>
+
+<span class="kw">import</span> java<span class="punc">.</span>util<span class="punc">.</span>Map<span class="punc">;</span>
+
+<span class="punc">@</span><span class="type">RestController</span>
+<span class="punc">@</span><span class="type">RequestMapping</span><span class="punc">(</span><span class="str">"/api/profile"</span><span class="punc">)</span>
+<span class="kw">public class</span> <span class="type">ProfileController</span> <span class="punc">{</span>
+
+    <span class="cmt">// Public — anyone can call this</span>
+    <span class="punc">@</span><span class="type">GetMapping</span><span class="punc">(</span><span class="str">"/public"</span><span class="punc">)</span>
+    <span class="kw">public</span> <span class="type">Map</span><span class="punc">&lt;</span><span class="type">String</span><span class="punc">,</span> <span class="type">String</span><span class="punc">&gt;</span> <span class="fn">publicEndpoint</span><span class="punc">()</span> <span class="punc">{</span>
+        <span class="kw">return</span> Map<span class="punc">.</span><span class="fn">of</span><span class="punc">(</span><span class="str">"message"</span><span class="punc">,</span> <span class="str">"This is public!"</span><span class="punc">);</span>
+    <span class="punc">}</span>
+
+    <span class="cmt">// Protected — requires a valid Okta JWT</span>
+    <span class="punc">@</span><span class="type">GetMapping</span><span class="punc">(</span><span class="str">"/me"</span><span class="punc">)</span>
+    <span class="kw">public</span> <span class="type">Map</span><span class="punc">&lt;</span><span class="type">String</span><span class="punc">,</span> <span class="type">String</span><span class="punc">&gt;</span> <span class="fn">getMe</span><span class="punc">(</span><span class="punc">@</span><span class="type">AuthenticationPrincipal</span> <span class="type">Jwt</span> jwt<span class="punc">)</span> <span class="punc">{</span>
+        <span class="type">String</span> name      <span class="punc">=</span> jwt<span class="punc">.</span><span class="fn">getClaimAsString</span><span class="punc">(</span><span class="str">"name"</span><span class="punc">);</span>
+        <span class="type">String</span> userEmail <span class="punc">=</span> jwt<span class="punc">.</span><span class="fn">getClaimAsString</span><span class="punc">(</span><span class="str">"userEmail"</span><span class="punc">);</span>
+
+        <span class="kw">return</span> Map<span class="punc">.</span><span class="fn">of</span><span class="punc">(</span>
+            <span class="str">"message"</span><span class="punc">,</span>   <span class="str">"You are authenticated!"</span><span class="punc">,</span>
+            <span class="str">"name"</span><span class="punc">,</span>      name <span class="punc">!=</span> <span class="kw">null</span> <span class="punc">?</span> name <span class="punc">:</span> <span class="str">""</span><span class="punc">,</span>
+            <span class="str">"userEmail"</span><span class="punc">,</span> userEmail <span class="punc">!=</span> <span class="kw">null</span> <span class="punc">?</span> userEmail <span class="punc">:</span> <span class="str">""</span>
+        <span class="punc">);</span>
+    <span class="punc">}</span>
+<span class="punc">}</span></code></pre>
+        </div>
+
+        <div class="callout callout-info">
+          <div class="callout-title">@AuthenticationPrincipal Jwt</div>
+          <p>Spring Security injects the validated JWT directly into your method via <span class="inline-code">@AuthenticationPrincipal Jwt jwt</span>. You then read claims with <span class="inline-code">jwt.getClaimAsString("claimName")</span> — much cleaner than .NET's <span class="inline-code">User.FindFirst()</span> pattern.</p>
+        </div>
+      </div>
+    </section>
+
+    <hr class="section-divider">
+
+    <!-- SB STEP 5 -->
+    <section class="step-section" id="sb-run">
+      <div class="step-header">
+        <div class="step-number" style="background: var(--green);">S5</div>
+        <div class="step-title-group">
+          <h2>Run and test</h2>
+          <span class="step-subtitle">mvn spring-boot:run · Postman</span>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Start the Spring Boot API:</p>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">bash</span>
+            <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          </div>
+          <pre><code>./mvnw spring-boot:run</code></pre>
+        </div>
+
+        <p>The API starts on <span class="inline-code">http://localhost:8080</span>. To switch your React app from .NET to Spring Boot, update <span class="inline-code">src/config.ts</span>:</p>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-filename">src/config.ts</span>
+            <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          </div>
+          <pre><code><span class="kw">export const</span> baseDomainDotnet <span class="punc">=</span> import<span class="punc">.</span>meta<span class="punc">.</span>env<span class="punc">.</span>VITE_BASE_DOMAIN_DOTNET <span class="kw">as</span> <span class="type">string</span><span class="punc">;</span>
+<span class="kw">export const</span> baseDomainSpringBoot <span class="punc">=</span> import<span class="punc">.</span>meta<span class="punc">.</span>env<span class="punc">.</span>VITE_BASE_DOMAIN_SPRING_BOOT <span class="kw">as</span> <span class="type">string</span><span class="punc">;</span>
+
+<span class="cmt">// Switch here to change backend — no component code changes needed</span>
+<span class="kw">export const</span> apiBaseUrl <span class="punc">=</span> baseDomainSpringBoot<span class="punc">;</span></code></pre>
+        </div>
+
+        <h3>Test with Postman</h3>
+        <ol class="steps-list">
+          <li><span class="inline-code">GET http://localhost:8080/api/profile/public</span> → should return 200 with no token</li>
+          <li><span class="inline-code">GET http://localhost:8080/api/profile/me</span> with no token → should return 401</li>
+          <li><span class="inline-code">GET http://localhost:8080/api/profile/me</span> with <span class="inline-code">Authorization: Bearer &lt;token&gt;</span> → should return your name and userEmail</li>
+        </ol>
+
+        <div class="callout callout-tip">
+          <div class="callout-title">.NET vs Spring Boot — key differences</div>
+          <p>Spring Boot reads the issuer from <span class="inline-code">application.properties</span> and auto-discovers the JWKS endpoint — no explicit audience configuration needed by default (though you can add it). .NET requires both issuer and audience explicitly. Spring also injects the JWT directly into controller methods via <span class="inline-code">@AuthenticationPrincipal</span>, whereas .NET uses <span class="inline-code">User.FindFirst()</span> on the claims principal.</p>
+        </div>
+      </div>
+    </section>
+
+    <hr class="section-divider">
+
+    <div style="text-align: center; padding: 2rem 0 1rem; color: var(--muted); font-size: 14px;">
+      <p>Tutorial complete · React + .NET 10 + Spring Boot + Okta</p>
       <p style="margin-top: 4px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--border2);">Next steps: add role-based access, refresh tokens, and production HTTPS config</p>
     </div>
 
