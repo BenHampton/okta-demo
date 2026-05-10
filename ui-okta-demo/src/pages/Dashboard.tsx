@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from 'react'
 import { useOktaAuth } from '@okta/okta-react'
+import {apiBaseUrl} from "../config.ts";
 
 interface ProfileData {
     message: string;
@@ -19,7 +20,7 @@ export default function Dashboard() {
 
         const token = authState.accessToken.accessToken;
 
-        fetch('http://localhost:5167/api/profile/me', {
+        fetch(`${apiBaseUrl}/api/profile/me`, {
             headers: {
                 Authorization: `Bearer ${token}`
             }
