@@ -1,0 +1,49 @@
+{
+  "info": {
+    "name": "Okta Demo - .NET",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5167",
+      "type": "string"
+    },
+    {
+      "key": "bearerToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "GET /api/profile/public",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/profile/public",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "profile", "public"]
+        }
+      }
+    },
+    {
+      "name": "GET /api/profile/me",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{bearerToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/profile/me",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "profile", "me"]
+        }
+      }
+    }
+  ]
+}

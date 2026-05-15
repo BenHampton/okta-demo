@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\benja\\\\Documents\\\\git\\\\Projects\\\\okta-demo\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(Remove-Item *)"
+    ]
+  }
+}
